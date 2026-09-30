@@ -1,103 +1,104 @@
 # pulumi-tplink
 
-An unofficial native Pulumi provider for TP-Link Archer routers. It manages DHCP
-reservations, DHCP DNS and pool bounds, UPnP, DMZ, WAN administration, and the absence
-of inbound NAT rules through the router's local web API. It needs no cloud account,
-SSH access, or Terraform bridge.
+Manage your TP-Link Archer router with [Pulumi](https://www.pulumi.com/).
+Reserve IP addresses, set DHCP and DNS options, and control UPnP, DMZ and remote
+administration from your Pulumi project. The provider talks directly to your router.
+You don't need a TP-Link cloud account or SSH access.
 
-Tested protocol: Archer AXE75, firmware 1.10.5. Other routers and firmware versions
-are unverified. Licensed under [Apache-2.0](LICENSE). This project is not affiliated
-with or endorsed by TP-Link or Pulumi. There is no published release or Registry
-listing yet; development builds are usable through generated SDKs.
+This is an unofficial project, tested on **Archer AXE75 firmware 1.10.5**.
+Other models and firmware versions haven't been tested.
 
-## Develop
+## Install
 
-The host needs Git, make and Docker Compose. All toolchains run in pinned
-containers. Go dependencies are locked by `go.mod` and `go.sum`.
+You'll need a [Pulumi project](https://www.pulumi.com/docs/iac/get-started/),
+its language's tools, and network access to your router.
 
-```sh
-make check sdk-check release-check secret-check
-```
+> The first release hasn't been published yet. Until then, use the
+> [development build instructions](docs/development.md#try-a-development-build).
 
-`make schema` derives `provider/cmd/pulumi-resource-tplink/schema.json` from the Go
-resource types. `make sdk-nodejs` generates and compiles the TypeScript SDK for
-sibling-checkout consumers. `make sdks` generates the other Pulumi language SDKs.
-`make sdk-check` generates and compiles Node.js, Python, Go, .NET and Java bindings,
-including an installed Python import check. `make release-check` builds all six
-plugin archives and loads the native archive through an isolated Pulumi plugin cache.
-`make secret-check` scans Git history and the working diff with Gitleaks.
-SDKs, binaries and caches are build outputs, not committed sources.
-
-The default development version is `0.1.0-dev`. Set `VERSION=x.y.z` to stamp a build.
-A sibling consumer must install the binary with the same version as its generated SDK.
-See [consumer setup](docs/consumer.md).
-
-## Resources
-
-| Resource | Contract on destroy |
-| --- | --- |
-| `DhcpReservation` | Deletes the reservation; keeps the displayed device name |
-| `DhcpServer` | Keeps DHCP configuration unchanged |
-| `Upnp`, `Dmz`, `RemoteAdmin` | Keeps the toggle unchanged |
-| `InboundRules` | Stops asserting empty NAT tables; never restores removed rules |
-
-`InboundRules` reads both tables during diff, even without a refresh. Applying it
-removes every port forward and port trigger it finds. Preview logs those rules and
-does not remove them. Other resources report drift on refresh.
-
-Connection settings belong to an explicit `Provider`: `host`, secret `password`,
-and optional `insecure` (default false). `TPLINK_HOST`, `TPLINK_PASSWORD` and
-`TPLINK_INSECURE` provide environment fallbacks. `host` is an address with an optional
-port, not a URL. `insecure: true` explicitly accepts the router's self-signed TLS
-certificate. Sessions serialize within a provider process, not across deployments or
-browser logins. Do not overlap those operations.
-
-## Layout
-
-| Path | Owns |
-| --- | --- |
-| `internal/router/` | Go transport, authentication and router operations |
-| `provider/` | Go Pulumi configuration and resource lifecycles |
-| `provider/cmd/pulumi-resource-tplink/` | Plugin entry point and generated Pulumi schema |
-| `internal/routertest/` | Fake router for focused tests |
-| `sdk/` | Generated consumer bindings; ignored by Git |
-| `bin/`, `dist/`, `.cache/` | Build outputs and tool caches; ignored by Git |
-| `Makefile`, `compose.yaml` | Containerised build, schema export, SDK generation and releases |
-
-All authored implementation code is Go. Pulumi generates the SDKs for consumers in
-other languages; they are bindings to the same plugin, not separate implementations.
-Language-specific containers generate and compile consumer SDKs. Schema export uses
-Pulumi's CLI and jq, following the native-provider template. SDK versions come from
-the stamped plugin schema, including language-specific version conversions.
-
-[Protocol notes](docs/protocol.md) explain the RSA-only login, verified endpoints and
-positional deletion. The provider implements only the calls its resources need.
-
-## Releases
-
-CI validates provider source, schema parity, secret scanning, release installation,
-and each language SDK in separate jobs. A version-tag push runs those gates before
-publishing plugin archives for Linux, macOS and Windows on amd64 and arm64.
-It does not upload SDKs to language registries.
-
-After a release is available, run this inside your Pulumi project, replacing the
-version with the release you selected:
+Choose a version from [GitHub Releases](https://github.com/lutyjj/pulumi-tplink/releases).
+Run this in your project, replacing `0.1.0` with that version:
 
 ```sh
-pulumi package add tplink@0.1.0 --server github://api.github.com/lutyjj/pulumi-tplink
+pulumi package add tplink@0.1.0 \
+  --server github://api.github.com/lutyjj/pulumi-tplink
 ```
 
-Pulumi generates the binding for your project's language. YAML consumes the schema
-directly. Published npm, PyPI, NuGet, Maven and Go packages are not required for this
-installation path. Private release assets require an authorized `GITHUB_TOKEN`.
-For an unreleased checkout, follow [consumer setup](docs/consumer.md).
+Pulumi downloads the provider and generates the SDK for your project's language.
+TypeScript, JavaScript, Python, Go, C# and Java are supported; Pulumi YAML uses the
+provider directly. You don't need to build the provider or install a separate
+package from a language registry. Releases include Linux, macOS and Windows binaries
+for amd64 and arm64. Private releases need an authorized `GITHUB_TOKEN`.
 
-Opening the repository, pushing a release tag and submitting it to the Pulumi
-Registry are separate operator actions. Registry registration requires an entry in
-`pulumi/registry`'s `community-packages/package-list.json` pointing to this repository
-and `provider/cmd/pulumi-resource-tplink/schema.json`, plus the `lutyjj` publisher
-mapping if it does not exist. The Registry overview is `docs/_index.md`.
+## Connect your router
 
-To update toolchains, change each Compose image's tag and digest together, then run
-the checks above. Go module versions are locked; generated SDK dependency ranges
-are resolved by their own language tools during validation.
+Save the router's address and local admin password. Leave the password out of the
+command so Pulumi prompts for it:
+
+```sh
+pulumi config set routerHost <router-address>
+pulumi config set --secret routerPassword
+```
+
+Here's a TypeScript example that reserves an address for a printer:
+
+```ts
+import * as pulumi from "@pulumi/pulumi";
+import * as tplink from "@lutyjj/pulumi-tplink";
+
+const config = new pulumi.Config();
+const router = new tplink.Provider("router", {
+    host: config.require("routerHost"),
+    password: config.requireSecret("routerPassword"),
+    insecure: true, // Only if you accept the router's self-signed certificate.
+});
+
+new tplink.DhcpReservation("printer", {
+    mac: "02:00:00:00:00:01",
+    ip: "192.0.2.20",
+    deviceName: "printer",
+}, { provider: router, protect: true });
+```
+
+Replace the example MAC and IP with your device's values. Use a hostname or IP
+address for `host`, optionally with a port, but without `https://`.
+TLS verification is on by default; `insecure: true` turns it off.
+You can also supply provider settings through `TPLINK_HOST`, `TPLINK_PASSWORD`
+and `TPLINK_INSECURE`.
+
+Run `pulumi preview --refresh` and check the changes before running `pulumi up`.
+The router only allows one admin session, so don't use its web interface or run
+another deployment at the same time. The example protects the reservation from
+accidental deletion; remove `protect` deliberately if you want to delete it.
+
+## What you can manage
+
+| Resource | What it does | When you destroy it |
+| --- | --- | --- |
+| `DhcpReservation` | Reserves an IP for a MAC address | Deletes the reservation, but keeps the device name |
+| `DhcpServer` | Sets DHCP DNS servers and pool bounds | Leaves the settings alone |
+| `Upnp`, `Dmz`, `RemoteAdmin` | Turns the setting on or off | Leaves the setting alone |
+| `InboundRules` | Removes all port forwards and port triggers | Leaves the tables alone; doesn't restore rules |
+
+**Only add `InboundRules` if you want every port forward and trigger removed.**
+Its preview lists the rules it would remove, including on first use.
+Preview doesn't change router settings. Use refresh to detect outside changes to
+other resources.
+
+## Update
+
+Run the install command again with the release version you want, then review
+`pulumi preview --refresh` before applying. Updates are your choice; publishing a
+release doesn't update your project or router.
+
+## Contribute
+
+See [development](docs/development.md) for builds and tests, and
+[protocol notes](docs/protocol.md) for the router API and its limits.
+If you're reporting a problem, include your router model, firmware and provider
+version. Don't include passwords, session tokens or raw router responses.
+
+## License
+
+[Apache-2.0](LICENSE). This project isn't affiliated with or endorsed by TP-Link
+or Pulumi.

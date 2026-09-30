@@ -1,7 +1,8 @@
 # Agent guidelines
 
 This repo owns an unofficial native Pulumi provider for TP-Link Archer routers.
-Repository visibility, releases and Registry submissions require explicit operator approval.
+Repository visibility and releases require explicit operator approval.
+Distribute through GitHub releases, not the Pulumi Registry or language registries.
 
 - Treat this project as greenfield. No deprecated paths, compatibility shims,
   state-format adapters, or transitional implementations. Rewrite a unit when extending
@@ -31,5 +32,10 @@ Repository visibility, releases and Registry submissions require explicit operat
   lifecycle or wire-boundary behaviour, not boilerplate or coverage targets.
 - Commit and push only on request. Stage relevant files, inspect the diff, use
   Conventional Commits, never force-push or skip hooks.
-- Release tags, registry submissions, public visibility and router deployments each
+- Release tags, public visibility and router deployments each
   require explicit authorization. A push to `main` runs CI but publishes nothing.
+
+- Use the latest compatible stable dependencies and CI actions. Keep image digests and
+  action commit pins alongside readable versions; document compatibility exceptions.
+- Keep README focused on users: what it does, installation, first use and updates.
+  Use plain, conversational English. Put build details in docs/development.md.

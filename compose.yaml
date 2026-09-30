@@ -17,10 +17,10 @@ x-tool: &tool
 services:
   go-tools:
     <<: *tool
-    image: golang:1.26.8@sha256:0f063af2d465d8dcae54cce04278ada488b96f77b42449c8d071e47d016cc65a
+    image: golang:1.27.1@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190
   pulumi-tools:
     <<: *tool
-    image: pulumi/pulumi-nodejs:3.262.0@sha256:c3abe63ad441d4cdad2cad0ac3a1341cc0862ca68787bb3568a5597d06401719
+    image: pulumi/pulumi-nodejs:3.266.0@sha256:c2451ae092d438eaf777e5f8475fe6a4811db1420b004c41f084cfbf64a759aa
   lint-tools:
     <<: *tool
     image: golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f
@@ -29,23 +29,24 @@ services:
     image: goreleaser/goreleaser:v2.18.2@sha256:7077423cf5ef643ff56a34b58f93c1364e927e5c3dfa470eeabc44cab1a9c72b
   schema-tools:
     <<: *tool
-    image: ghcr.io/jqlang/jq:1.8.1@sha256:4f34c6d23f4b1372ac789752cc955dc67c2ae177eb1b5860b75cdc5091ce6f91
+    image: ghcr.io/jqlang/jq:1.8.2@sha256:b9c68867e5766576263a222e91db3de422d802069c7af70440e667a95344e486
     entrypoint: [/jq]
   java-tools:
     <<: *tool
-    image: gradle:8.14.4-jdk11@sha256:035d077ee5b84a75d6a03515678b85620027b557b08ca22f693fbf5162c93fa5
+    # Pulumi generates a Java 11 toolchain; Gradle 9 requires Java 17 or newer to run.
+    image: gradle:8.14.5-jdk11@sha256:0677b2defdf9121bc6ee32744841b2173a13c2f4769a30a72d60efbe7b900f9b
   sdk-python-tools:
     <<: *tool
-    image: pulumi/pulumi-python:3.262.0@sha256:2151f086158d82034f869443e1514c48d7be515a9341cd85a1a525e2999d0ea4
+    image: pulumi/pulumi-python:3.266.0@sha256:da7b5c4dbd2e9f72134fee69a5e945703d172df0155c2687dda6087dc90ce557
   sdk-go-tools:
     <<: *tool
-    image: pulumi/pulumi-go:3.262.0@sha256:94e9a5b229dd59bae09fdb216ccf5cbe3ffc4a36617cfe42b262115669791512
+    image: pulumi/pulumi-go:3.266.0@sha256:dc00584e9edf7392d14e131a811b026df6112413d9ecbec355f2895c0d3dce77
   sdk-dotnet-tools:
     <<: *tool
-    image: pulumi/pulumi-dotnet:3.262.0@sha256:d4a99d23f3b6e8d82036a4202dd6577cdea3b41970674fe543a2329c479f1191
+    image: pulumi/pulumi-dotnet:3.266.0@sha256:e66ee897ee8e0d2d3ece1ea4955a4d8b364a530abbba718f0aaebd2e2bbb7c98
   sdk-java-tools:
     <<: *tool
-    image: pulumi/pulumi-java:3.262.0@sha256:cc0f941b83d41552449257dc67c8d868011ab910cdd89a511e666576e5cd8e16
+    image: pulumi/pulumi-java:3.266.0@sha256:dc8ae622e706cb94804f85c886c7600474fb44ed66cd2c3ad2e6a33c8b1f20d9
   secret-tools:
     <<: *tool
     image: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
