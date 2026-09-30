@@ -58,6 +58,8 @@ schema live in `provider/cmd/pulumi-resource-tplink/`. Tests use the fake router
 
 The implementation is Go. Pulumi generates the SDKs from the schema; those SDKs
 call the same provider, rather than implementing router operations themselves.
+The [API discovery proposal](api-discovery.md) describes planned maintainer tooling;
+it is not part of the provider's runtime.
 
 ## Dependencies and releases
 
