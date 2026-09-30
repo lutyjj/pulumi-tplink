@@ -1,0 +1,293 @@
+{
+  "name": "tplink",
+  "displayName": "TP-Link Archer",
+  "description": "Unofficial provider for TP-Link Archer routers using their local web API.",
+  "keywords": [
+    "tplink",
+    "tp-link",
+    "archer",
+    "router",
+    "dhcp",
+    "category/network",
+    "kind/native"
+  ],
+  "homepage": "https://github.com/lutyjj/pulumi-tplink",
+  "repository": "https://github.com/lutyjj/pulumi-tplink",
+  "pluginDownloadURL": "github://api.github.com/lutyjj/pulumi-tplink",
+  "publisher": "lutyjj",
+  "namespace": "lutyjj",
+  "language": {
+    "go": {
+      "importBasePath": "github.com/lutyjj/pulumi-tplink/sdk/go/tplink"
+    },
+    "nodejs": {
+      "packageName": "@lutyjj/pulumi-tplink"
+    }
+  },
+  "config": {
+    "variables": {
+      "host": {
+        "type": "string",
+        "description": "The router's LAN address, with an optional port. May also be set with the TPLINK_HOST environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_HOST"
+          ]
+        }
+      },
+      "insecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification. Routers serve a self-signed certificate, so this is usually required. May also be set with the TPLINK_INSECURE environment variable. Defaults to false.",
+        "default": false,
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_INSECURE"
+          ]
+        }
+      },
+      "password": {
+        "type": "string",
+        "description": "The router's local admin password, as typed into its web UI (not a TP-Link ID). May also be set with the TPLINK_PASSWORD environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_PASSWORD"
+          ]
+        },
+        "secret": true
+      }
+    }
+  },
+  "provider": {
+    "properties": {
+      "host": {
+        "type": "string",
+        "description": "The router's LAN address, with an optional port. May also be set with the TPLINK_HOST environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_HOST"
+          ]
+        }
+      },
+      "insecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification. Routers serve a self-signed certificate, so this is usually required. May also be set with the TPLINK_INSECURE environment variable. Defaults to false.",
+        "default": false,
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_INSECURE"
+          ]
+        }
+      },
+      "password": {
+        "type": "string",
+        "description": "The router's local admin password, as typed into its web UI (not a TP-Link ID). May also be set with the TPLINK_PASSWORD environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_PASSWORD"
+          ]
+        },
+        "secret": true
+      }
+    },
+    "required": [
+      "insecure"
+    ],
+    "inputProperties": {
+      "host": {
+        "type": "string",
+        "description": "The router's LAN address, with an optional port. May also be set with the TPLINK_HOST environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_HOST"
+          ]
+        }
+      },
+      "insecure": {
+        "type": "boolean",
+        "description": "Skip TLS certificate verification. Routers serve a self-signed certificate, so this is usually required. May also be set with the TPLINK_INSECURE environment variable. Defaults to false.",
+        "default": false,
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_INSECURE"
+          ]
+        }
+      },
+      "password": {
+        "type": "string",
+        "description": "The router's local admin password, as typed into its web UI (not a TP-Link ID). May also be set with the TPLINK_PASSWORD environment variable.",
+        "defaultInfo": {
+          "environment": [
+            "TPLINK_PASSWORD"
+          ]
+        },
+        "secret": true
+      }
+    }
+  },
+  "resources": {
+    "tplink:index:DhcpReservation": {
+      "description": "A DHCP address reservation, plus the name the router displays for the device.",
+      "properties": {
+        "deviceName": {
+          "type": "string",
+          "description": "The name the router displays for the device. Omit to leave whatever name the router currently shows."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The IPv4 address to reserve for the device."
+        },
+        "mac": {
+          "type": "string",
+          "description": "The device's MAC address, in any spelling. Normalised to AA-BB-CC-DD-EE-FF. Changing it replaces the reservation."
+        }
+      },
+      "required": [
+        "mac",
+        "ip"
+      ],
+      "inputProperties": {
+        "deviceName": {
+          "type": "string",
+          "description": "The name the router displays for the device. Omit to leave whatever name the router currently shows."
+        },
+        "ip": {
+          "type": "string",
+          "description": "The IPv4 address to reserve for the device."
+        },
+        "mac": {
+          "type": "string",
+          "description": "The device's MAC address, in any spelling. Normalised to AA-BB-CC-DD-EE-FF. Changing it replaces the reservation."
+        }
+      },
+      "requiredInputs": [
+        "mac",
+        "ip"
+      ]
+    },
+    "tplink:index:DhcpServer": {
+      "description": "The router's DHCP server record: the DNS handed to clients and the dynamic pool bounds. Every other field (lease time, gateway, domain) is preserved.",
+      "properties": {
+        "poolEnd": {
+          "type": "string",
+          "description": "The last address of the dynamic pool. Omit to leave the router's value."
+        },
+        "poolStart": {
+          "type": "string",
+          "description": "The first address of the dynamic pool. Omit to leave the router's value."
+        },
+        "primary": {
+          "type": "string",
+          "description": "The primary DNS server handed to DHCP clients."
+        },
+        "secondary": {
+          "type": "string",
+          "description": "The secondary DNS server. Omit for none: the router's secondary is cleared."
+        }
+      },
+      "required": [
+        "primary"
+      ],
+      "inputProperties": {
+        "poolEnd": {
+          "type": "string",
+          "description": "The last address of the dynamic pool. Omit to leave the router's value."
+        },
+        "poolStart": {
+          "type": "string",
+          "description": "The first address of the dynamic pool. Omit to leave the router's value."
+        },
+        "primary": {
+          "type": "string",
+          "description": "The primary DNS server handed to DHCP clients."
+        },
+        "secondary": {
+          "type": "string",
+          "description": "The secondary DNS server. Omit for none: the router's secondary is cleared."
+        }
+      },
+      "requiredInputs": [
+        "primary"
+      ]
+    },
+    "tplink:index:Dmz": {
+      "description": "Whether the DMZ host is enabled. A DMZ host receives every unmatched inbound port.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "inputProperties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "enabled"
+      ]
+    },
+    "tplink:index:InboundRules": {
+      "description": "Asserts that the router holds no port forwards and no port triggers, removing any it finds.",
+      "properties": {
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The rules removed by the last apply, as `table: fields`."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Rules currently present, as `table: fields`. Empty after an apply."
+        }
+      },
+      "required": [
+        "removed",
+        "rules"
+      ]
+    },
+    "tplink:index:RemoteAdmin": {
+      "description": "Whether the router can be administered from the WAN side.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "inputProperties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "enabled"
+      ]
+    },
+    "tplink:index:Upnp": {
+      "description": "Whether UPnP is enabled. UPnP lets any LAN device open its own NAT hole, unrecorded.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "inputProperties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "enabled"
+      ]
+    }
+  }
+}

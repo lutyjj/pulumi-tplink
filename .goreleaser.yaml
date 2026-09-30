@@ -1,0 +1,22 @@
+version: 2
+project_name: pulumi-tplink
+builds:
+  - id: provider
+    main: ./provider/cmd/pulumi-resource-tplink
+    binary: pulumi-resource-tplink
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X github.com/lutyjj/pulumi-tplink/provider.Version={{ .Version }}
+archives:
+  - name_template: "{{ .Binary }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    formats: [tar.gz]
+    files: []
+checksum:
+  name_template: checksums.txt
+changelog:
+  use: git
+  filters:
+    exclude: ['^docs:', '^test:', '^chore:']
