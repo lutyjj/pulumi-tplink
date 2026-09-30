@@ -15,7 +15,7 @@ services:
   go-tools:
     <<: *tool
     image: golang:1.26.8@sha256:0f063af2d465d8dcae54cce04278ada488b96f77b42449c8d071e47d016cc65a
-  node-tools:
+  pulumi-tools:
     <<: *tool
     image: pulumi/pulumi-nodejs:3.262.0@sha256:c3abe63ad441d4cdad2cad0ac3a1341cc0862ca68787bb3568a5597d06401719
   lint-tools:
@@ -24,3 +24,7 @@ services:
   release-tools:
     <<: *tool
     image: goreleaser/goreleaser:v2.18.2@sha256:7077423cf5ef643ff56a34b58f93c1364e927e5c3dfa470eeabc44cab1a9c72b
+  schema-tools:
+    <<: *tool
+    image: ghcr.io/jqlang/jq:1.8.1@sha256:4f34c6d23f4b1372ac789752cc955dc67c2ae177eb1b5860b75cdc5091ce6f91
+    entrypoint: [/jq]

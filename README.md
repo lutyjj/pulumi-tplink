@@ -47,16 +47,25 @@ port, not a URL. `insecure: true` explicitly accepts the router's self-signed TL
 certificate. Sessions serialize within a provider process, not across deployments or
 browser logins. Do not overlap those operations.
 
-## Protocol and API recovery
+## Layout
 
-[Protocol notes](docs/protocol.md) explain the RSA-only login and positional deletion.
-`api/openapi.json` records the endpoint surface recovered from the firmware web UI;
-it is not the Pulumi resource schema. The Go client implements only the calls the
-resources use, rather than generating thousands of unused endpoint methods.
+| Path | Owns |
+| --- | --- |
+| `internal/router/` | Go transport, authentication and router operations |
+| `provider/` | Go Pulumi configuration and resource lifecycles |
+| `provider/cmd/pulumi-resource-tplink/` | Plugin entry point and generated Pulumi schema |
+| `internal/routertest/` | Fake router for focused tests |
+| `sdk/` | Generated consumer bindings; ignored by Git |
+| `bin/`, `dist/`, `.cache/` | Build outputs and tool caches; ignored by Git |
+| `Makefile`, `compose.yaml` | Containerised build, schema export, SDK generation and releases |
 
-The [recovery tooling](tools/codegen/README.md) fetches and analyses web bundles in a
-container. Its caches never enter Git. Sampling persists field names and types only,
-not payloads or secrets.
+All authored implementation code is Go. Pulumi generates the SDKs for consumers in
+other languages; they are bindings to the same plugin, not separate implementations.
+The Node toolchain only compiles the generated TypeScript SDK. Schema export uses
+Pulumi's CLI and jq, following the native-provider template.
+
+[Protocol notes](docs/protocol.md) explain the RSA-only login, verified endpoints and
+positional deletion. The provider implements only the calls its resources need.
 
 ## Releases and public-package readiness
 
@@ -65,6 +74,6 @@ push runs the separate release workflow, producing Pulumi plugin archives for Li
 macOS and Windows on amd64 and arm64. Private release assets require GitHub credentials.
 No SDK registry upload runs, and no release has been made merely by pushing `main`.
 
-Before making this public: choose a license, review firmware-derived material and
+Before making this public: choose a license, review the protocol implementation and
 trademarks, cut a tested release, add a logo, and submit the package to the Pulumi
 Registry. The overview is prepared in `docs/_index.md`; listing is not automatic.

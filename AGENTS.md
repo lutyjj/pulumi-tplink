@@ -12,6 +12,8 @@ The repository stays private until the operator explicitly approves publication.
 - Run all build, lint, generation and test tools through Docker Compose and Make.
 - Keep Go code idiomatic. Prefer direct composition and standard library networking.
   Do not build a vendor-agnostic router framework or add unsupported firmware variants.
+- All authored implementation code is Go. JavaScript and TypeScript belong only
+  in generated consumer SDKs, not provider-side tools.
 - `internal/router` owns the wire protocol and session lifecycle. `provider` owns
   Pulumi configuration and resources. Derive schema and SDKs from Go types with
   `pulumi-go-provider`; never hand-edit the generated schema or SDKs.
@@ -21,8 +23,8 @@ The repository stays private until the operator explicitly approves publication.
 - Do not access or change a real router unless the operator delegates that target and
   operation. A provider migration is separate from a configuration change. Preview
   before apply, stop on unexpected replacements, and verify after any approved apply.
-- Keep passwords, cookies, tokens, sampled payloads, downloaded firmware bundles and
-  host inventory out of source, logs and commits. Only schema shapes may leave sampling.
+- Keep passwords, cookies, tokens, live response payloads and host inventory out of
+  source, logs and commits.
 - Run focused validation: `make check schema sdk-nodejs`. Add tests only for meaningful
   lifecycle or wire-boundary behaviour, not boilerplate or coverage targets.
 - Commit and push only on request. Stage relevant files, inspect the diff, use
