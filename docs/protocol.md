@@ -1,8 +1,29 @@
 # Router protocol
 
-The client implements the local HTTPS web API verified on Archer AXE75 firmware
-1.10.5. This is an undocumented protocol, not TP-Link's cloud API. Older Archer
-clients using an AES session envelope cannot substitute for this transport.
+The client implements TP-Link's undocumented local HTTPS web API, not its cloud
+API. Archer clients using an AES session envelope cannot substitute for this
+RSA-only transport.
+
+## Verified device
+
+| Field | Reported value |
+| --- | --- |
+| Model and hardware | Archer AXE75 v1.0 |
+| Firmware | `1.5.6 Build 20260623 rel.56854(4555)` |
+| Configured region | DE |
+
+Firmware and hardware versions come from an authenticated `read` of
+`admin/firmware?form=upgrade`. The HTML version tag identifies the web UI build,
+not the installed firmware. Region comes from `locale?form=country`.
+
+The unmodified client successfully authenticates and reads DHCP settings,
+reservations, UPnP, DMZ, remote administration and both NAT tables on this build.
+This check verifies read compatibility, not all write operations. The NAT tables
+were empty, so populated rule parsing and deletion were not exercised live.
+
+The Pulumi schema describes the resources implemented in `provider/`. It is not
+a specification of the router's entire API. Generated SDKs expose those resources;
+adding a router feature still requires client and resource code with lifecycle tests.
 
 ## Authentication
 

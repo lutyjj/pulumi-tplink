@@ -1,8 +1,7 @@
 // Package router speaks the undocumented web API of TP-Link Archer routers.
 //
-// The protocol is verified on an Archer AXE75, firmware 1.10.5.
-// docs/protocol.md explains the login
-// handshake and the firmware quirks this package works around.
+// docs/protocol.md records verified hardware, firmware and test scope, and
+// explains the login handshake and the firmware quirks this package works around.
 package router
 
 import (

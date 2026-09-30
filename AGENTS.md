@@ -19,8 +19,9 @@ Distribute through GitHub releases, not the Pulumi Registry or language registri
 - `internal/router` owns the wire protocol and session lifecycle. `provider` owns
   Pulumi configuration and resources. Derive schema and SDKs from Go types with
   `pulumi-go-provider`; never hand-edit the generated schema or SDKs.
-- Keep parity with the verified Archer AXE75 firmware 1.10.5 behaviour. Preserve
-  unmanaged form fields, resolve positional deletes from fresh reads, and serialize
+- Use docs/protocol.md for verified hardware, firmware and test scope. Do not treat
+  the web UI build as a firmware version or successful reads as proof of write semantics.
+  Preserve unmanaged form fields, resolve positional deletes from fresh reads, and serialize
   login-through-logout sessions per router. Preview must never write settings or rules.
 - Do not access or change a real router unless the operator delegates that target and
   operation. A provider migration is separate from a configuration change. Preview

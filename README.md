@@ -5,8 +5,9 @@ Reserve IP addresses, set DHCP and DNS options, and control UPnP, DMZ and remote
 administration from your Pulumi project. The provider talks directly to your router.
 You don't need a TP-Link cloud account or SSH access.
 
-This is an unofficial project, tested on **Archer AXE75 firmware 1.10.5**.
-Other models and firmware versions haven't been tested.
+This is an unofficial project. API reads are verified on **Archer AXE75 v1.0**
+with **firmware 1.5.6**. See the [compatibility notes](docs/protocol.md#verified-device)
+for the tested build and limits. Other models and firmware versions haven't been tested.
 
 ## Install
 
