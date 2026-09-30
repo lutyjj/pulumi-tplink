@@ -16,7 +16,11 @@ archives:
     files: [LICENSE, NOTICE]
 checksum:
   name_template: checksums.txt
+# Release Please owns the draft and release notes. Publication is the final CI step.
+release:
+  draft: true
+  use_existing_draft: true
+  replace_existing_artifacts: true
+  mode: keep-existing
 changelog:
-  use: git
-  filters:
-    exclude: ['^docs:', '^test:', '^chore:']
+  disable: true

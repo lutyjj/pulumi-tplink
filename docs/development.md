@@ -9,7 +9,7 @@ make check sdk-check release-check secret-check
 
 | Command | What it checks |
 | --- | --- |
-| `make check` | Go formatting, vet, lint and tests with the race detector |
+| `make check` | Go formatting, vet, lint, race tests and workflow validation |
 | `make schema` | Generates the Pulumi schema from the Go resource types |
 | `make sdk-check` | Generates and builds all five SDKs; imports the installed Python package |
 | `make release-check` | Builds six release archives and loads the native Linux plugin in an isolated cache |
@@ -72,7 +72,37 @@ The Java build uses the latest Gradle 8 patch with JDK 11 because Pulumi generat
 a Java 11 toolchain. Gradle 9 needs a newer runtime and a separate Java 11 toolchain.
 Keep this exception until the generated build can use it without extra tooling.
 
-CI checks the source, committed schema, SDKs and release archives. Pushing a
-`vX.Y.Z` tag runs validation before publishing the plugin archives and checksums
-to GitHub Releases. It doesn't publish language packages or deploy router changes.
-Repository visibility and release publication are separate, explicit decisions.
+CI checks the source, committed schema, SDKs and release archives. Changes limited
+to Markdown or `docs/` skip CI and release-PR refreshes. Code or workflow changes
+still run the checks, including when they accompany documentation changes.
+
+## Make a release
+
+Release Please maintains a release PR on `main` from Conventional Commit messages.
+It updates `CHANGELOG.md` and `.release-please-manifest.json`; the Go binary and
+SDK versions come from the release tag, not a separate version file.
+
+Review and merge that PR when you want to release. Merging it creates a version
+tag and a draft GitHub release, then calls the Release workflow directly. This
+explicit call also works with `GITHUB_TOKEN`, whose tag pushes don't trigger
+another workflow. There is no manual tagging step.
+
+The Release workflow verifies the draft's commit belongs to `main`, checks that
+the tag and manifest agree, and builds and validates all SDKs and plugin archives
+from that exact commit. GoReleaser attaches the archives and checksums to the
+draft, preserving Release Please's notes. The workflow publishes only after those
+steps succeed. It leaves published releases unchanged on retries and doesn't
+mark an older version as latest.
+
+If publication fails, rerun the failed workflow or choose **Actions → Release →
+Run workflow** and enter the existing draft's `vX.Y.Z` tag. To refresh a release PR
+manually, run **Actions → Release Please → Run workflow** on `main`.
+
+Enable **Settings → Actions → General → Allow GitHub Actions to create and approve
+pull requests**. The workflow creates PRs but does not approve or merge them.
+With the default `GITHUB_TOKEN`, CI does not start automatically on bot-created
+release PRs; an optional `RELEASE_PLEASE_TOKEN` can enable that behavior. Publication
+always runs its own validation after the merge.
+
+No language packages or router changes are deployed by this process. Repository
+visibility remains a separate decision.

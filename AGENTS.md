@@ -33,8 +33,9 @@ Distribute through GitHub releases, not the Pulumi Registry or language registri
   lifecycle or wire-boundary behaviour, not boilerplate or coverage targets.
 - Commit and push only on request. Stage relevant files, inspect the diff, use
   Conventional Commits, never force-push or skip hooks.
-- Release tags, public visibility and router deployments each
-  require explicit authorization. A push to `main` runs CI but publishes nothing.
+- Public visibility, release-PR merges and router deployments require explicit
+  authorization. Release Please maintains the release PR; merging it triggers
+  validated publication. Ordinary pushes do not publish releases.
 
 - Use the latest compatible stable dependencies and CI actions. Keep image digests and
   action commit pins alongside readable versions; document compatibility exceptions.

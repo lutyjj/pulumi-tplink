@@ -1,38 +1,107 @@
 name: Release
 on:
-  push:
-    tags: ['v*.*.*']
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Release Please draft tag (vX.Y.Z)
+        required: true
+        type: string
 permissions:
   contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+      draft: ${{ steps.release.outputs.draft }}
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the release identifies a main commit and matching version
+        id: release
+        run: |
+          echo "$TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          release="$(gh release view "$TAG" --json targetCommitish,isDraft)"
+          sha="$(jq -r .targetCommitish <<< "$release")"
+          echo "$sha" | grep -Eq '^[0-9a-f]{40}$'
+          git merge-base --is-ancestor "$sha" origin/main
+          test "$(git rev-parse --verify "refs/tags/$TAG^{commit}")" = "$sha"
+          version="${TAG#v}"
+          git show "$sha:.release-please-manifest.json" | jq -e --arg version "$version" '.["."] == $version'
+          draft="$(jq -r .isDraft <<< "$release")"
+          printf 'sha=%s\nversion=%s\ndraft=%s\n' "$sha" "$version" "$draft" >> "$GITHUB_OUTPUT"
+          if [ "$draft" = false ]; then echo "Release is already published; leaving it unchanged."; fi
+
   validate:
+    needs: prepare
+    if: needs.prepare.outputs.draft == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         language: [nodejs, python, go, dotnet, java]
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.prepare.outputs.sha }}
           persist-credentials: false
-      - name: Build the SDK for the tagged version
-        run: make sdk-${{ matrix.language }} VERSION="${GITHUB_REF_NAME#v}"
+      - name: Build the SDK for the release version
+        run: make sdk-${{ matrix.language }} VERSION="$VERSION"
       - if: matrix.language != 'nodejs'
-        run: make sdk-${{ matrix.language }}-check VERSION="${GITHUB_REF_NAME#v}"
+        run: make sdk-${{ matrix.language }}-check VERSION="$VERSION"
+
   release:
-    needs: validate
+    needs: [prepare, validate]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ inputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+      VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Validate tagged sources and release installation
-        run: make check schema secret-check release-check VERSION="${GITHUB_REF_NAME#v}"
+      - name: Verify the tag still identifies the validated commit
+        run: test "$(git rev-parse --verify "refs/tags/$TAG^{commit}")" = "$RELEASE_SHA"
+      - name: Validate sources and release installation
+        run: make check schema secret-check release-check VERSION="$VERSION"
       - run: git diff --exit-code -- provider/cmd/pulumi-resource-tplink/schema.json
-      - name: Publish plugin binaries
+      - name: Attach binaries to the draft and publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: make release
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          release="$(gh release view "$TAG" --json targetCommitish,isDraft)"
+          test "$(jq -r .targetCommitish <<< "$release")" = "$RELEASE_SHA"
+          if [ "$(jq -r .isDraft <<< "$release")" = false ]; then
+            echo "Release is already published; leaving it unchanged."
+            exit 0
+          fi
+          make release VERSION="$VERSION"
+          current="$(gh api --paginate "repos/$GH_REPO/releases" --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' | sort -V | tail -1)"
+          latest=false
+          if [ "$(printf '%s\n%s\n' "$current" "$TAG" | sort -V | tail -1)" = "$TAG" ]; then latest=true; fi
+          gh release edit "$TAG" --draft=false --latest="$latest"

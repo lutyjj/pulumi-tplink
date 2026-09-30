@@ -13,7 +13,7 @@ SCHEMA_FILE := $(CMD_DIR)/schema.json
 VERSION ?= 0.1.0-dev
 VERSION_PKG := github.com/lutyjj/pulumi-tplink/provider.Version
 
-.PHONY: help tidy format build test lint schema sdks sdk-nodejs check release release-snapshot sdk-check release-check sdk-go-check sdk-python-check sdk-dotnet-check sdk-java-check sdk-python sdk-go sdk-dotnet sdk-java secret-check
+.PHONY: help tidy format build test lint schema sdks sdk-nodejs check release release-snapshot sdk-check release-check sdk-go-check sdk-python-check sdk-dotnet-check sdk-java-check sdk-python sdk-go sdk-dotnet sdk-java secret-check workflow-check
 help: ## List targets.
 	@awk -F ':.*?## ' '/^[a-z0-9-]+:.*?## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -68,7 +68,10 @@ secret-check: ## Scan committed history and the working diff with Gitleaks.
 	$(COMPOSE) run --rm secret-tools gitleaks git --redact --log-opts=--all .
 	git diff HEAD --no-ext-diff | $(COMPOSE) run --rm -T secret-tools gitleaks stdin --redact
 
-check: lint test ## Check provider source and focused lifecycle tests.
+workflow-check: ## Validate GitHub Actions workflows.
+	$(GO) go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+check: lint test workflow-check ## Check provider source, lifecycle tests and workflows.
 
 release-snapshot: ## Build all six plugin archives without publishing.
 	$(COMPOSE) run --rm release-tools goreleaser release --snapshot --clean --skip=publish
@@ -85,5 +88,5 @@ release-check: release-snapshot ## Verify archives and load an installed snapsho
 		pulumi package get-schema "$$PULUMI_HOME/plugins/resource-$(PACK)-v$$1/pulumi-resource-$(PACK)" > .cache/release-schema.json' sh "$$version"; \
 	$(COMPOSE) run --rm schema-tools -e --arg version "$$version" '.name == "$(PACK)" and .version == $$version and (.resources | length) == 6' .cache/release-schema.json
 
-release: ## Publish archives from a version tag. Requires operator approval.
+release: ## Attach archives to an existing release draft. Publication belongs to CI.
 	$(COMPOSE) run --rm -e GITHUB_TOKEN release-tools goreleaser release --clean
