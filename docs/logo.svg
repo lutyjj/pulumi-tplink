@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Router and network nodes">
+  <g fill="none" stroke="#167d9a" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 44V12m56 32V12M64 80v20m-40 0h80m-80 0v16m80-16v16"/>
+    <rect x="12" y="44" width="104" height="36" rx="8"/>
+  </g>
+  <g fill="#167d9a"><circle cx="32" cy="62" r="5"/><circle cx="48" cy="62" r="5"/></g>
+</svg>

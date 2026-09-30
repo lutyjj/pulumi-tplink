@@ -11,6 +11,9 @@ x-tool: &tool
     GOFLAGS: -buildvcs=false
     PULUMI_HOME: /workspace/.cache/pulumi
     PULUMI_SKIP_UPDATE_CHECK: "true"
+    NUGET_PACKAGES: /workspace/.cache/nuget
+    DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+    GRADLE_USER_HOME: /workspace/.cache/gradle
 services:
   go-tools:
     <<: *tool
@@ -28,3 +31,24 @@ services:
     <<: *tool
     image: ghcr.io/jqlang/jq:1.8.1@sha256:4f34c6d23f4b1372ac789752cc955dc67c2ae177eb1b5860b75cdc5091ce6f91
     entrypoint: [/jq]
+  java-tools:
+    <<: *tool
+    image: gradle:8.14.4-jdk11@sha256:035d077ee5b84a75d6a03515678b85620027b557b08ca22f693fbf5162c93fa5
+  sdk-python-tools:
+    <<: *tool
+    image: pulumi/pulumi-python:3.262.0@sha256:2151f086158d82034f869443e1514c48d7be515a9341cd85a1a525e2999d0ea4
+  sdk-go-tools:
+    <<: *tool
+    image: pulumi/pulumi-go:3.262.0@sha256:94e9a5b229dd59bae09fdb216ccf5cbe3ffc4a36617cfe42b262115669791512
+  sdk-dotnet-tools:
+    <<: *tool
+    image: pulumi/pulumi-dotnet:3.262.0@sha256:d4a99d23f3b6e8d82036a4202dd6577cdea3b41970674fe543a2329c479f1191
+  sdk-java-tools:
+    <<: *tool
+    image: pulumi/pulumi-java:3.262.0@sha256:cc0f941b83d41552449257dc67c8d868011ab910cdd89a511e666576e5cd8e16
+  secret-tools:
+    <<: *tool
+    image: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+  dotnet-tools:
+    <<: *tool
+    image: mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:35d40304542c8689331f8cab17c65926cdf48fe711e289321d71924b230a7d29

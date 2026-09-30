@@ -10,9 +10,18 @@ inbound NAT tables. The protocol is verified on Archer AXE75 firmware 1.10.5.
 
 ## Installation
 
-This package is private and not listed in the public Registry. Build the plugin and
-local SDK following the repository's [consumer setup](https://github.com/lutyjj/pulumi-tplink/blob/main/docs/consumer.md).
-No SDK has been published to npm or another language registry.
+Choose a version available on the repository's
+[Releases page](https://github.com/lutyjj/pulumi-tplink/releases), then run inside your
+Pulumi project:
+
+```sh
+pulumi package add tplink@0.1.0 --server github://api.github.com/lutyjj/pulumi-tplink
+```
+
+Replace `0.1.0` with the selected release. Pulumi generates a typed binding for
+TypeScript/JavaScript, Python, Go, .NET or Java. YAML uses the schema directly;
+no published language package is required. For an unreleased checkout, follow the
+[consumer setup](https://github.com/lutyjj/pulumi-tplink/blob/main/docs/consumer.md).
 
 ## Example usage
 

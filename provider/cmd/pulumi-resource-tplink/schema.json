@@ -12,16 +12,33 @@
     "kind/native"
   ],
   "homepage": "https://github.com/lutyjj/pulumi-tplink",
+  "license": "Apache-2.0",
   "repository": "https://github.com/lutyjj/pulumi-tplink",
+  "logoUrl": "https://raw.githubusercontent.com/lutyjj/pulumi-tplink/main/docs/logo.svg",
   "pluginDownloadURL": "github://api.github.com/lutyjj/pulumi-tplink",
   "publisher": "lutyjj",
   "namespace": "lutyjj",
+  "meta": {
+    "supportPack": true
+  },
   "language": {
+    "csharp": {
+      "respectSchemaVersion": true
+    },
     "go": {
-      "importBasePath": "github.com/lutyjj/pulumi-tplink/sdk/go/tplink"
+      "importBasePath": "github.com/lutyjj/pulumi-tplink/sdk/go/tplink",
+      "respectSchemaVersion": true
+    },
+    "java": {
+      "basePackage": "com.lutyjj",
+      "buildFiles": "gradle"
     },
     "nodejs": {
-      "packageName": "@lutyjj/pulumi-tplink"
+      "packageName": "@lutyjj/pulumi-tplink",
+      "respectSchemaVersion": true
+    },
+    "python": {
+      "respectSchemaVersion": true
     }
   },
   "config": {
@@ -132,6 +149,10 @@
           "type": "string",
           "description": "The name the router displays for the device. Omit to leave whatever name the router currently shows."
         },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the router enables this reservation. Apply always enables it; refresh detects reservations disabled outside Pulumi."
+        },
         "ip": {
           "type": "string",
           "description": "The IPv4 address to reserve for the device."
@@ -143,7 +164,8 @@
       },
       "required": [
         "mac",
-        "ip"
+        "ip",
+        "enabled"
       ],
       "inputProperties": {
         "deviceName": {

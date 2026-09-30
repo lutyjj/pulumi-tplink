@@ -70,7 +70,7 @@ func TestPreviewNeverWritesOrLogsIn(t *testing.T) {
 	cases := map[string]map[string]any{
 		"DhcpReservation": {"mac": "AA-BB-CC-DD-EE-01", "ip": "192.0.2.11"},
 		"DhcpServer":      {"primary": "192.0.2.2"},
-		"Upnp":            {"enabled": false}, "Dmz": {"enabled": false}, "RemoteAdmin": {"enabled": false}, "InboundRules": {},
+		"Upnp":            {"enabled": false}, "Dmz": {"enabled": false}, "RemoteAdmin": {"enabled": false},
 	}
 	for kind, values := range cases {
 		inputs := check(t, s, kind, values)
@@ -106,7 +106,7 @@ func TestReservationAdoptionReadAndReplacement(t *testing.T) {
 	t.Parallel()
 	s, f := server(t)
 	const mac = "AA-BB-CC-DD-EE-01"
-	f.Reservations = []routertest.Reservation{{MAC: mac, IP: "192.0.2.11", Hostname: "nas"}}
+	f.Reservations = []routertest.Reservation{{MAC: mac, IP: "192.0.2.11", Hostname: "nas", Enabled: true}}
 	in := check(t, s, "DhcpReservation", map[string]any{"mac": mac, "ip": "192.0.2.11", "deviceName": "nas"})
 	out, err := s.Create(p.CreateRequest{Urn: urn("DhcpReservation"), Properties: in})
 	require.NoError(t, err)
@@ -204,4 +204,93 @@ func TestCredentialRotationDoesNotReplaceResources(t *testing.T) {
 	diff, err := s.DiffConfig(p.DiffRequest{State: old, Inputs: next})
 	require.NoError(t, err)
 	assert.Equal(t, p.Update, diff.DetailedDiff["password"].Kind)
+}
+
+func TestReservationPreservesUnmanagedName(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	const mac = "AA-BB-CC-DD-EE-01"
+	f.Reservations = []routertest.Reservation{{MAC: mac, IP: "192.0.2.11", Hostname: "operator-name", Enabled: true}}
+	in := check(t, s, "DhcpReservation", map[string]any{"mac": mac, "ip": "192.0.2.11"})
+	out, err := s.Create(p.CreateRequest{Urn: urn("DhcpReservation"), Properties: in})
+	require.NoError(t, err)
+	// A later external rename must outrank both the original row and Pulumi state.
+	f.Reservations[0].Hostname = "current-name"
+	next := check(t, s, "DhcpReservation", map[string]any{"mac": mac, "ip": "192.0.2.12"})
+	_, err = s.Update(p.UpdateRequest{Urn: urn("DhcpReservation"), ID: out.ID, State: out.Properties, Inputs: next})
+	require.NoError(t, err)
+	require.Len(t, f.Snapshot(), 1)
+	assert.Equal(t, "current-name", f.Snapshot()[0].Hostname)
+	assert.Empty(t, f.Names, "unmanaged aliases must not be written")
+}
+
+func TestDisabledReservationAdoptionAndDrift(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	const mac = "AA-BB-CC-DD-EE-01"
+	f.Reservations = []routertest.Reservation{{MAC: mac, IP: "192.0.2.11", Hostname: "printer", Enabled: false}}
+	in := check(t, s, "DhcpReservation", map[string]any{"mac": mac, "ip": "192.0.2.11"})
+	out, err := s.Create(p.CreateRequest{Urn: urn("DhcpReservation"), Properties: in})
+	require.NoError(t, err)
+	require.Len(t, f.Snapshot(), 1)
+	assert.True(t, f.Snapshot()[0].Enabled, "adopting a disabled row must enable it")
+	assert.Equal(t, "printer", f.Snapshot()[0].Hostname)
+	f.Reservations[0].Enabled = false
+	read, err := s.Read(p.ReadRequest{Urn: urn("DhcpReservation"), ID: out.ID, Inputs: in, Properties: out.Properties})
+	require.NoError(t, err)
+	assert.False(t, read.Properties.Get("enabled").AsBool())
+	diff, err := s.Diff(p.DiffRequest{Urn: urn("DhcpReservation"), ID: out.ID, State: read.Properties, Inputs: in})
+	require.NoError(t, err)
+	assert.Equal(t, p.Update, diff.DetailedDiff["enabled"].Kind)
+	next, err := s.Update(p.UpdateRequest{Urn: urn("DhcpReservation"), ID: out.ID, State: read.Properties, Inputs: in})
+	require.NoError(t, err)
+	assert.True(t, next.Properties.Get("enabled").AsBool())
+	assert.True(t, f.Snapshot()[0].Enabled)
+}
+
+func TestFailedEnableRestoresDisabledRow(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	const mac = "AA-BB-CC-DD-EE-01"
+	original := routertest.Reservation{MAC: mac, IP: "192.0.2.11", Hostname: "printer", Enabled: false}
+	f.Reservations = []routertest.Reservation{original}
+	f.FailNext["admin/dhcps?form=reservation/insert"] = 1
+	in := check(t, s, "DhcpReservation", map[string]any{"mac": mac, "ip": "192.0.2.11"})
+	_, err := s.Create(p.CreateRequest{Urn: urn("DhcpReservation"), Properties: in})
+	require.Error(t, err)
+	assert.Equal(t, []routertest.Reservation{original}, f.Snapshot(), "rollback must preserve enabled state and hostname")
+}
+
+func TestMalformedReservationFailsBeforeMutation(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	in := check(t, s, "DhcpReservation", map[string]any{"mac": "AA-BB-CC-DD-EE-01", "ip": "192.0.2.11", "deviceName": "printer"})
+	out, err := s.Create(p.CreateRequest{Urn: urn("DhcpReservation"), Properties: in})
+	require.NoError(t, err)
+	f.Reservations[0].MAC = ""
+	_, err = s.Read(p.ReadRequest{Urn: urn("DhcpReservation"), ID: out.ID, Inputs: in, Properties: out.Properties})
+	require.ErrorContains(t, err, "invalid MAC")
+	next := check(t, s, "DhcpReservation", map[string]any{"mac": "AA-BB-CC-DD-EE-01", "ip": "192.0.2.12", "deviceName": "new-name"})
+	_, err = s.Update(p.UpdateRequest{Urn: urn("DhcpReservation"), ID: out.ID, State: out.Properties, Inputs: next})
+	require.ErrorContains(t, err, "invalid MAC")
+	assert.Equal(t, "printer", f.Names["AA-BB-CC-DD-EE-01"], "validate the table before changing the alias")
+	assert.Equal(t, "192.0.2.11", f.Snapshot()[0].IP)
+}
+
+func TestInboundPreviewObservesWithoutRemoving(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	f.Tables["admin/nat?form=vs"] = []map[string]string{{"name": "operator-forward", "port": "443"}}
+	f.Tables["admin/nat?form=pt"] = []map[string]string{{"name": "operator-trigger"}}
+	out, err := s.Create(p.CreateRequest{Urn: urn("InboundRules"), Properties: property.Map{}, DryRun: true})
+	require.NoError(t, err)
+	assert.Equal(t, 1, f.Logins, "the initial preview must read existing tables")
+	_, err = s.Update(p.UpdateRequest{Urn: urn("InboundRules"), ID: out.ID, State: props(map[string]any{"removed": []string{}, "rules": []string{}}), Inputs: property.Map{}, DryRun: true})
+	require.NoError(t, err)
+	assert.Equal(t, 2, f.Logins, "update preview must report the current tables")
+	assert.Len(t, f.Tables["admin/nat?form=vs"], 1)
+	assert.Len(t, f.Tables["admin/nat?form=pt"], 1)
+	f.FailNext["admin/nat?form=vs/load"] = 1
+	_, err = s.Create(p.CreateRequest{Urn: urn("InboundRules"), Properties: property.Map{}, DryRun: true})
+	require.Error(t, err, "an unreadable table must not produce a clean preview")
 }

@@ -27,6 +27,7 @@ const (
 // Reservation is one stored row.
 type Reservation struct {
 	MAC, IP, Hostname string
+	Enabled           bool
 }
 
 // Fake is a running fake router. Its exported fields may be read or seeded under
@@ -196,7 +197,11 @@ func (f *Fake) reservations(w http.ResponseWriter, op string, form url.Values) {
 			if n, ok := f.Names[r.MAC]; ok {
 				name = n
 			}
-			rows[i] = map[string]string{"mac": r.MAC, "ip": r.IP, "hostname": name, "enable": "on"}
+			enabled := "off"
+			if r.Enabled {
+				enabled = "on"
+			}
+			rows[i] = map[string]string{"mac": r.MAC, "ip": r.IP, "hostname": name, "enable": enabled}
 		}
 		reply(w, true, rows)
 	case "insert":
@@ -205,7 +210,7 @@ func (f *Fake) reservations(w http.ResponseWriter, op string, form url.Values) {
 			reply(w, false, "bad_row")
 			return
 		}
-		f.Reservations = append([]Reservation{{MAC: row["mac"], IP: row["ip"], Hostname: row["hostname"]}}, f.Reservations...)
+		f.Reservations = append([]Reservation{{MAC: row["mac"], IP: row["ip"], Hostname: row["hostname"], Enabled: row["enable"] == "on"}}, f.Reservations...)
 		reply(w, true, map[string]any{})
 	case "remove":
 		// `key` is ignored, exactly as on the real firmware: only the position counts.

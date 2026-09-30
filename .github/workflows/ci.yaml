@@ -6,12 +6,26 @@ on:
 permissions:
   contents: read
 jobs:
-  check:
+  provider:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - run: make check schema sdk-nodejs
+      - run: make check schema secret-check release-check
       - name: Verify committed schema
         run: git diff --exit-code -- provider/cmd/pulumi-resource-tplink/schema.json
+  sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [nodejs, python, go, dotnet, java]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: make sdk-${{ matrix.language }}
+      - if: matrix.language != 'nodejs'
+        run: make sdk-${{ matrix.language }}-check

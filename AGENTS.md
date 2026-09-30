@@ -1,10 +1,11 @@
 # Agent guidelines
 
 This repo owns an unofficial native Pulumi provider for TP-Link Archer routers.
-The repository stays private until the operator explicitly approves publication.
+Repository visibility, releases and Registry submissions require explicit operator approval.
 
 - Treat this project as greenfield. No deprecated paths, compatibility shims,
-  state-format adapters, or transitional implementations. Complete replacements in
+  state-format adapters, or transitional implementations. Rewrite a unit when extending
+  it would make it harder to maintain. Complete replacements in
   one change, removing obsolete code, configuration, callers, tests and documentation.
 - Write for a stranger reading the public repository. Keep consumer-specific hostnames,
   addresses, paths, inventory and deployment details out of source and documentation.
@@ -25,7 +26,8 @@ The repository stays private until the operator explicitly approves publication.
   before apply, stop on unexpected replacements, and verify after any approved apply.
 - Keep passwords, cookies, tokens, live response payloads and host inventory out of
   source, logs and commits.
-- Run focused validation: `make check schema sdk-nodejs`. Add tests only for meaningful
+- Run `make check` for provider changes, `make sdk-check` for schema or SDK tooling
+  changes, and `make release-check secret-check` before publication. Add tests only for meaningful
   lifecycle or wire-boundary behaviour, not boilerplate or coverage targets.
 - Commit and push only on request. Stage relevant files, inspect the diff, use
   Conventional Commits, never force-push or skip hooks.

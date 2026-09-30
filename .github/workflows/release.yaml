@@ -1,11 +1,26 @@
-name: Private release
+name: Release
 on:
   push:
     tags: ['v*.*.*']
 permissions:
   contents: read
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [nodejs, python, go, dotnet, java]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build the SDK for the tagged version
+        run: make sdk-${{ matrix.language }} VERSION="${GITHUB_REF_NAME#v}"
+      - if: matrix.language != 'nodejs'
+        run: make sdk-${{ matrix.language }}-check VERSION="${GITHUB_REF_NAME#v}"
   release:
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,10 +29,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Validate tagged sources
-        run: make check schema
+      - name: Validate tagged sources and release installation
+        run: make check schema secret-check release-check VERSION="${GITHUB_REF_NAME#v}"
       - run: git diff --exit-code -- provider/cmd/pulumi-resource-tplink/schema.json
-      - name: Build and publish private binaries
+      - name: Publish plugin binaries
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make release

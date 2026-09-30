@@ -49,7 +49,7 @@ func (s *InboundRulesState) Annotate(a infer.Annotator) {
 // observe lists every rule in both tables, labelled with its table.
 func observe(ctx context.Context) ([]string, error) {
 	client, _ := connection(ctx)
-	var found []string
+	found := []string{}
 	err := client.Do(ctx, func(s *router.Session) error {
 		for _, table := range router.IngressTables {
 			rules, err := s.IngressRules(ctx, table)
@@ -62,6 +62,11 @@ func observe(ctx context.Context) ([]string, error) {
 		}
 		return nil
 	})
+	if err == nil {
+		for _, rule := range found {
+			p.GetLogger(ctx).Warningf("inbound rule present, will be removed on apply: %s", rule)
+		}
+	}
 	return found, err
 }
 
@@ -95,9 +100,6 @@ func (InboundRules) Diff(
 	if err != nil {
 		return infer.DiffResponse{}, err
 	}
-	for _, rule := range found {
-		p.GetLogger(ctx).Warningf("inbound rule present, will be removed: %s", rule)
-	}
 	diff := map[string]p.PropertyDiff{}
 	if len(found) > 0 {
 		diff["removed"] = p.PropertyDiff{Kind: p.Update}
@@ -112,7 +114,8 @@ func (InboundRules) Create(
 	_, host := connection(ctx)
 	id := host + "/inbound-rules"
 	if req.DryRun {
-		return infer.CreateResponse[InboundRulesState]{ID: id, Output: InboundRulesState{Removed: []string{}, Rules: []string{}}}, nil
+		found, err := observe(ctx)
+		return infer.CreateResponse[InboundRulesState]{ID: id, Output: InboundRulesState{Removed: []string{}, Rules: found}}, err
 	}
 	removed, err := clearAll(ctx)
 	return infer.CreateResponse[InboundRulesState]{ID: id, Output: InboundRulesState{Removed: removed, Rules: []string{}}}, err
@@ -123,7 +126,8 @@ func (InboundRules) Update(
 	ctx context.Context, req infer.UpdateRequest[InboundRulesArgs, InboundRulesState],
 ) (infer.UpdateResponse[InboundRulesState], error) {
 	if req.DryRun {
-		return infer.UpdateResponse[InboundRulesState]{Output: req.State}, nil
+		found, err := observe(ctx)
+		return infer.UpdateResponse[InboundRulesState]{Output: InboundRulesState{Removed: req.State.Removed, Rules: found}}, err
 	}
 	removed, err := clearAll(ctx)
 	return infer.UpdateResponse[InboundRulesState]{Output: InboundRulesState{Removed: removed, Rules: []string{}}}, err
@@ -136,9 +140,6 @@ func (InboundRules) Read(
 	found, err := observe(ctx)
 	if err != nil {
 		return infer.ReadResponse[InboundRulesArgs, InboundRulesState]{}, err
-	}
-	if found == nil {
-		found = []string{}
 	}
 	return infer.ReadResponse[InboundRulesArgs, InboundRulesState]{
 		ID: req.ID, Inputs: InboundRulesArgs{}, State: InboundRulesState{Removed: req.State.Removed, Rules: found},

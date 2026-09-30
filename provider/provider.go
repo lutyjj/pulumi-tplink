@@ -19,14 +19,23 @@ const Name = "tplink"
 func Provider() p.Provider {
 	result, err := infer.NewProviderBuilder().
 		WithDisplayName("TP-Link Archer").
+		WithLicense("Apache-2.0").
+		WithLogoURL("https://raw.githubusercontent.com/lutyjj/pulumi-tplink/main/docs/logo.svg").
 		WithDescription("Unofficial provider for TP-Link Archer routers using their local web API.").
 		WithKeywords("tplink", "tp-link", "archer", "router", "dhcp", "category/network", "kind/native").
 		WithHomepage("https://github.com/lutyjj/pulumi-tplink").
 		WithRepository("https://github.com/lutyjj/pulumi-tplink").
 		WithPublisher("lutyjj").
 		WithNamespace("lutyjj").
+		WithSupportPack(true).
 		WithPluginDownloadURL("github://api.github.com/lutyjj/pulumi-tplink").
-		WithLanguageMap(map[string]any{"nodejs": map[string]any{"packageName": "@lutyjj/pulumi-tplink"}}).
+		WithLanguageMap(map[string]any{
+			"nodejs": map[string]any{"packageName": "@lutyjj/pulumi-tplink", "respectSchemaVersion": true},
+			"python": map[string]any{"respectSchemaVersion": true},
+			"go":     map[string]any{"respectSchemaVersion": true},
+			"csharp": map[string]any{"respectSchemaVersion": true},
+			"java":   map[string]any{"basePackage": "com.lutyjj", "buildFiles": "gradle"},
+		}).
 		WithGoImportPath("github.com/lutyjj/pulumi-tplink/sdk/go/tplink").
 		WithConfig(infer.Config(&Config{})).
 		WithResources(

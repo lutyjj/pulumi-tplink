@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -34,8 +35,9 @@ func NormalizeMAC(mac string) (string, error) {
 
 // Reservation is one DHCP address reservation as the router stores it.
 type Reservation struct {
-	MAC string
-	IP  string
+	MAC     string
+	IP      string
+	Enabled bool
 	// DeviceName is the name carried on the reservation row. The name the router
 	// displays for a device lives in a separate table; see SetDeviceName.
 	DeviceName string
@@ -47,9 +49,35 @@ func (s *Session) Reservations(ctx context.Context) ([]Reservation, error) {
 	if err != nil {
 		return nil, err
 	}
+	return decodeReservations(rows)
+}
+
+func decodeReservations(rows []map[string]any) ([]Reservation, error) {
 	out := make([]Reservation, len(rows))
+	seen := make(map[string]bool, len(rows))
 	for i, r := range rows {
-		out[i] = Reservation{MAC: str(r, "mac"), IP: str(r, "ip"), DeviceName: str(r, "hostname")}
+		for _, field := range []string{"mac", "ip", "hostname", "enable"} {
+			if _, ok := r[field].(string); !ok {
+				return nil, fmt.Errorf("reservation row %d: missing or non-string %s", i, field)
+			}
+		}
+		mac, err := NormalizeMAC(r["mac"].(string))
+		if err != nil {
+			return nil, fmt.Errorf("reservation row %d: invalid MAC", i)
+		}
+		ip, err := netip.ParseAddr(r["ip"].(string))
+		if err != nil || !ip.Is4() {
+			return nil, fmt.Errorf("reservation row %d: invalid IPv4 address", i)
+		}
+		enabled := r["enable"].(string)
+		if enabled != on && enabled != off {
+			return nil, fmt.Errorf("reservation row %d: unknown enable value", i)
+		}
+		if seen[mac] {
+			return nil, fmt.Errorf("reservation row %d: duplicate MAC", i)
+		}
+		seen[mac] = true
+		out[i] = Reservation{MAC: mac, IP: ip.String(), DeviceName: r["hostname"].(string), Enabled: enabled == on}
 	}
 	return out, nil
 }
@@ -62,17 +90,21 @@ func (s *Session) FindReservation(ctx context.Context, mac string) (Reservation,
 		return Reservation{}, false, err
 	}
 	for _, r := range all {
-		if got, err := NormalizeMAC(r.MAC); err == nil && got == mac {
+		if r.MAC == mac {
 			return r, true, nil
 		}
 	}
 	return Reservation{}, false, nil
 }
 
-// InsertReservation adds a reservation. `name` is the row's own hostname, which the
-// router shows only for a MAC it has never seen; see SetDeviceName.
-func (s *Session) InsertReservation(ctx context.Context, mac, ip, name string) error {
-	row, err := json.Marshal(map[string]string{"mac": mac, "ip": ip, "hostname": name, "enable": "on"})
+// InsertReservation adds a complete row, including its enabled state. The row's
+// hostname is displayed only for a MAC the router has never seen; see SetDeviceName.
+func (s *Session) InsertReservation(ctx context.Context, reservation Reservation) error {
+	enabled := off
+	if reservation.Enabled {
+		enabled = on
+	}
+	row, err := json.Marshal(map[string]string{"mac": reservation.MAC, "ip": reservation.IP, "hostname": reservation.DeviceName, "enable": enabled})
 	if err != nil {
 		return err
 	}
@@ -93,7 +125,7 @@ func (s *Session) RemoveReservation(ctx context.Context, mac string) error {
 		return err
 	}
 	for i, r := range all {
-		if got, err := NormalizeMAC(r.MAC); err != nil || got != mac {
+		if r.MAC != mac {
 			continue
 		}
 		_, err := s.call(ctx, "remove reservation", dhcpReserve,

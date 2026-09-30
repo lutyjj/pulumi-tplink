@@ -13,7 +13,7 @@ SCHEMA_FILE := $(CMD_DIR)/schema.json
 VERSION ?= 0.1.0-dev
 VERSION_PKG := github.com/lutyjj/pulumi-tplink/provider.Version
 
-.PHONY: help tidy format build test lint schema sdks sdk-nodejs check release release-snapshot
+.PHONY: help tidy format build test lint schema sdks sdk-nodejs check release release-snapshot sdk-check release-check sdk-go-check sdk-python-check sdk-dotnet-check sdk-java-check sdk-python sdk-go sdk-dotnet sdk-java secret-check
 help: ## List targets.
 	@awk -F ':.*?## ' '/^[a-z0-9-]+:.*?## / {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
@@ -37,21 +37,53 @@ lint: ## Check Go format, vet and lint.
 schema: build ## Derive the committed Pulumi schema from Go types.
 	@mkdir -p .cache
 	$(PULUMI) sh -c 'pulumi package get-schema ./bin/pulumi-resource-$(PACK) > .cache/schema.json'
-	$(COMPOSE) run --rm schema-tools 'del(.version)' .cache/schema.json > $(SCHEMA_FILE)
+	$(COMPOSE) run --rm schema-tools 'del(.version)' .cache/schema.json > .cache/schema-unversioned.json
+	cp .cache/schema-unversioned.json $(SCHEMA_FILE)
 
 sdk-nodejs: build ## Generate and compile the local Node SDK.
-	$(PULUMI) pulumi package gen-sdk --local --language nodejs --out sdk ./bin/pulumi-resource-$(PACK)
-	$(PULUMI) sh -c 'cd sdk/nodejs && npm pkg set version=$(VERSION) && npm install --no-audit --no-fund'
+	$(PULUMI) pulumi package gen-sdk --local --language nodejs --version $(VERSION) --out sdk ./bin/pulumi-resource-$(PACK)
+	$(PULUMI) sh -c 'cd sdk/nodejs && npm install --no-audit --no-fund'
 
-sdks: schema sdk-nodejs ## Generate SDKs for all Pulumi languages.
-	@for lang in python go dotnet java; do \
-		$(PULUMI) pulumi package gen-sdk --language $$lang --out sdk $(SCHEMA_FILE) || exit $$?; \
-	done
+sdk-python sdk-go sdk-dotnet sdk-java: sdk-%: build
+	$(COMPOSE) run --rm sdk-$*-tools pulumi package gen-sdk --language $* --version $(VERSION) --out sdk ./bin/pulumi-resource-$(PACK)
 
-check: lint test ## Run the checks used by CI.
+sdks: schema sdk-nodejs sdk-python sdk-go sdk-dotnet sdk-java ## Generate SDKs for all Pulumi languages.
+
+sdk-check: sdks ## Generate and compile every language SDK; imports Python's installed package.
+	$(MAKE) -j4 sdk-go-check sdk-python-check sdk-dotnet-check sdk-java-check
+
+sdk-go-check:
+	$(GO) sh -c 'cd sdk/go && go mod tidy && go test ./...'
+
+sdk-python-check:
+	$(COMPOSE) run --rm sdk-python-tools sh -c 'python3 -m venv --clear .cache/python-sdk && .cache/python-sdk/bin/pip install --disable-pip-version-check ./sdk/python && .cache/python-sdk/bin/python -c "from lutyjj_tplink import Provider, DhcpReservation, DhcpServer, Upnp, Dmz, RemoteAdmin, InboundRules"'
+
+sdk-dotnet-check:
+	$(COMPOSE) run --rm dotnet-tools dotnet build sdk/dotnet --nologo
+
+sdk-java-check:
+	$(COMPOSE) run --rm -e PACKAGE_VERSION=$(VERSION) java-tools gradle --no-daemon -p sdk/java build
+
+secret-check: ## Scan committed history and the working diff with Gitleaks.
+	$(COMPOSE) run --rm secret-tools gitleaks git --redact --log-opts=--all .
+	git diff HEAD --no-ext-diff | $(COMPOSE) run --rm -T secret-tools gitleaks stdin --redact
+
+check: lint test ## Check provider source and focused lifecycle tests.
 
 release-snapshot: ## Build all six plugin archives without publishing.
 	$(COMPOSE) run --rm release-tools goreleaser release --snapshot --clean --skip=publish
 
-release: ## Publish private archives from a version tag. Requires operator approval.
+release-check: release-snapshot ## Verify archives and load an installed snapshot in an isolated plugin cache.
+	@for os in linux darwin windows; do for arch in amd64 arm64; do \
+		binary=pulumi-resource-$(PACK); [ "$$os" != windows ] || binary=$$binary.exe; \
+		tar -tzf dist/pulumi-resource-$(PACK)-v*-$$os-$$arch.tar.gz | grep -Fx "$$binary" >/dev/null || exit 1; \
+	done; done
+	@set -eu; version=$$($(COMPOSE) run --rm schema-tools -r .version dist/metadata.json); \
+	$(PULUMI) sh -ec 'export PULUMI_HOME=$$(mktemp -d); trap "rm -rf $$PULUMI_HOME" EXIT; \
+		case $$(uname -m) in x86_64) arch=amd64;; aarch64) arch=arm64;; *) exit 1;; esac; \
+		pulumi plugin install resource $(PACK) "$$1" --file "dist/pulumi-resource-$(PACK)-v$$1-linux-$$arch.tar.gz"; \
+		pulumi package get-schema "$$PULUMI_HOME/plugins/resource-$(PACK)-v$$1/pulumi-resource-$(PACK)" > .cache/release-schema.json' sh "$$version"; \
+	$(COMPOSE) run --rm schema-tools -e --arg version "$$version" '.name == "$(PACK)" and .version == $$version and (.resources | length) == 6' .cache/release-schema.json
+
+release: ## Publish archives from a version tag. Requires operator approval.
 	$(COMPOSE) run --rm -e GITHUB_TOKEN release-tools goreleaser release --clean

@@ -120,7 +120,7 @@ func (c *Client) base() string { return "https://" + c.cfg.Host }
 func (c *Client) rawPost(ctx context.Context, path, cookie string, body url.Values) (*Envelope, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base()+path, strings.NewReader(body.Encode()))
 	if err != nil {
-		return nil, "", err
+		return nil, "", errors.New("invalid router request URL")
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Referer", c.base()+"/webpages/index.html")
@@ -130,7 +130,13 @@ func (c *Client) rawPost(ctx context.Context, path, cookie string, body url.Valu
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("router %s: %w", c.cfg.Host, err)
+		// net/http wraps failures in url.Error, whose message includes the secret
+		// session token in the URL. Keep the cause for errors.Is, not the URL.
+		var requestErr *url.Error
+		if errors.As(err, &requestErr) {
+			err = requestErr.Err
+		}
+		return nil, "", fmt.Errorf("router request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {

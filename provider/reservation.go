@@ -42,6 +42,12 @@ func (a *ReservationArgs) Annotate(an infer.Annotator) {
 // ReservationState is the recorded state of a DhcpReservation.
 type ReservationState struct {
 	ReservationArgs
+	Enabled bool `pulumi:"enabled"`
+}
+
+// Annotate describes the observed enable state.
+func (s *ReservationState) Annotate(a infer.Annotator) {
+	a.Describe(&s.Enabled, "Whether the router enables this reservation. Apply always enables it; refresh detects reservations disabled outside Pulumi.")
 }
 
 // Check normalises the MAC and validates the rest.
@@ -83,6 +89,9 @@ func (DhcpReservation) Diff(
 	if req.Inputs.IP != req.State.IP {
 		diff["ip"] = p.PropertyDiff{Kind: p.Update}
 	}
+	if !req.State.Enabled {
+		diff["enabled"] = p.PropertyDiff{Kind: p.Update}
+	}
 	// An omitted name is not managed, so it never drifts.
 	if req.Inputs.DeviceName != nil && deref(req.Inputs.DeviceName) != deref(req.State.DeviceName) {
 		diff["deviceName"] = p.PropertyDiff{Kind: p.Update}
@@ -100,12 +109,12 @@ func (DhcpReservation) Create(
 ) (infer.CreateResponse[ReservationState], error) {
 	client, host := connection(ctx)
 	id := host + "/" + req.Inputs.MAC
-	state := ReservationState{req.Inputs}
+	state := ReservationState{ReservationArgs: req.Inputs, Enabled: true}
 	if req.DryRun {
 		return infer.CreateResponse[ReservationState]{ID: id, Output: state}, nil
 	}
 	err := client.Do(ctx, func(s *router.Session) error {
-		return converge(ctx, s, req.Inputs, "")
+		return converge(ctx, s, req.Inputs)
 	})
 	return infer.CreateResponse[ReservationState]{ID: id, Output: state}, err
 }
@@ -114,25 +123,24 @@ func (DhcpReservation) Create(
 func (DhcpReservation) Update(
 	ctx context.Context, req infer.UpdateRequest[ReservationArgs, ReservationState],
 ) (infer.UpdateResponse[ReservationState], error) {
-	state := ReservationState{req.Inputs}
+	state := ReservationState{ReservationArgs: req.Inputs, Enabled: true}
 	if req.DryRun {
 		return infer.UpdateResponse[ReservationState]{Output: state}, nil
 	}
 	client, _ := connection(ctx)
 	err := client.Do(ctx, func(s *router.Session) error {
-		return converge(ctx, s, req.Inputs, deref(req.State.DeviceName))
+		return converge(ctx, s, req.Inputs)
 	})
 	return infer.UpdateResponse[ReservationState]{Output: state}, err
 }
 
 // converge makes the router hold args. It is idempotent, which is what lets Create
 // adopt a reservation that already exists instead of inserting a duplicate.
-//
-// previousName is the last known name, carried onto a replacement row when the inputs
-// do not manage a name: a row is rewritten from scratch, so passing nothing would blank
-// the name of a device the router has never seen, the one case where the row rather
-// than the device table is what shows.
-func converge(ctx context.Context, s *router.Session, args ReservationArgs, previousName string) error {
+func converge(ctx context.Context, s *router.Session, args ReservationArgs) error {
+	existing, found, err := s.FindReservation(ctx, args.MAC)
+	if err != nil {
+		return err
+	}
 	name := deref(args.DeviceName)
 	// Name first, reservation last. Creating takes two writes and only the row is
 	// visible to Pulumi as "the resource exists", so the row is the commit point.
@@ -143,31 +151,26 @@ func converge(ctx context.Context, s *router.Session, args ReservationArgs, prev
 			return err
 		}
 	}
-	existing, found, err := s.FindReservation(ctx, args.MAC)
-	if err != nil {
-		return err
-	}
-	if found && existing.IP == args.IP {
+	if found && existing.IP == args.IP && existing.Enabled {
 		return nil
 	}
 	if found {
-		// `operation=update` addresses rows by position like `remove` does, so it
-		// cannot be trusted to key off the MAC. remove+insert uses only verified
-		// operations.
+		// The addressing of `operation=update` is unverified. Use the verified
+		// remove and insert operations, resolving positions from fresh reads.
 		if err := s.RemoveReservation(ctx, args.MAC); err != nil {
 			return err
 		}
 	}
 	rowName := name
 	if rowName == "" {
-		rowName = previousName
+		rowName = existing.DeviceName
 	}
-	if err := s.InsertReservation(ctx, args.MAC, args.IP, rowName); err != nil {
+	if err := s.InsertReservation(ctx, router.Reservation{MAC: args.MAC, IP: args.IP, DeviceName: rowName, Enabled: true}); err != nil {
 		// Restore the old row if a remove+insert update fails. Retrying will reconcile it.
 		if found {
 			rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 			defer cancel()
-			if restoreErr := s.InsertReservation(rctx, existing.MAC, existing.IP, existing.DeviceName); restoreErr != nil {
+			if restoreErr := s.InsertReservation(rctx, existing); restoreErr != nil {
 				return fmt.Errorf("insert failed (%w); rollback also failed: %v", err, restoreErr)
 			}
 		}
@@ -216,7 +219,7 @@ func (DhcpReservation) Read(
 	}
 	_, host := connection(ctx)
 	return infer.ReadResponse[ReservationArgs, ReservationState]{
-		ID: host + "/" + mac, Inputs: args, State: ReservationState{args},
+		ID: host + "/" + mac, Inputs: args, State: ReservationState{ReservationArgs: args, Enabled: found.Enabled},
 	}, nil
 }
 

@@ -1,4 +1,4 @@
-# Use a private development build
+# Use a development build
 
 Generate the SDK and binary from the same checkout and version:
 
@@ -26,9 +26,16 @@ pulumi plugin install resource tplink 0.1.0-dev \
 ```
 
 This command changes the plugin cache, not managed devices. Reinstall after rebuilding
-an unchanged development version. A release consumer should pin a released version
-and use `github://api.github.com/lutyjj/pulumi-tplink` with `GITHUB_TOKEN` authorized
-for the private repository; there are no release assets until a release is published.
+an unchanged development version. For a released version, use Pulumi's normal package installation instead:
+
+```sh
+pulumi package add tplink@0.1.0 --server github://api.github.com/lutyjj/pulumi-tplink
+```
+
+Choose a version present on the repository's Releases page. This generates the
+binding for the current project's language without requiring a published language
+package. Private release assets require an authorized `GITHUB_TOKEN`.
+There are no release assets until the operator publishes a release.
 
 ## Example
 

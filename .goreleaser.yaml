@@ -13,7 +13,7 @@ builds:
 archives:
   - name_template: "{{ .Binary }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     formats: [tar.gz]
-    files: []
+    files: [LICENSE, NOTICE]
 checksum:
   name_template: checksums.txt
 changelog:

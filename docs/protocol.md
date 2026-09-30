@@ -30,7 +30,11 @@ DHCP reservations use `admin/dhcps?form=reservation` with `load`, `insert` and `
 The insert body carries a JSON `new` row with MAC, IP, hostname and enable fields.
 Removal addresses the row by `index`; the firmware ignores `key`. Resolve the index
 from a fresh table read each time. The addressing of `update` has not been verified,
-so readdressing uses remove and insert rather than that operation.
+so readdressing uses remove and insert rather than that operation. Reads validate
+MAC, IPv4 address, hostname and enable fields before changing any record. Declaring
+a reservation requires it to be enabled; refresh detects external disablement.
+Readdressing preserves the freshly observed hostname when no name is managed,
+and rollback restores the original row's enable state as well as its address.
 
 Displayed device names live in `admin/traffic?form=dev_name`, keyed by MAC. They
 outrank a reservation row's hostname for devices the router has seen. An empty alias
@@ -44,4 +48,6 @@ stops management without blanking or restoring values.
 NAT port forwarding (`admin/nat?form=vs`) and port triggering (`form=pt`) are positional
 tables. The `InboundRules` resource asserts both are empty and removes rows from last
 to first so deletion cannot shift an index still queued for removal. Unknown table
-shapes fail closed. This resource does not author rules or restore them on destroy.
+shapes fail closed. Both creation and update previews read and report existing
+rules without removing them. This resource does not author rules or restore them
+on destroy.
