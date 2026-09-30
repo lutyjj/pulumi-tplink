@@ -11,7 +11,7 @@ published language SDKs. No open-source license has been selected yet.
 
 ## Develop
 
-The host needs Git, make and Docker or rootless Podman. All toolchains run in pinned
+The host needs Git, make and Docker Compose. All toolchains run in pinned
 containers. Go dependencies are locked by `go.mod` and `go.sum`.
 
 ```sh
@@ -25,7 +25,7 @@ SDKs, binaries and caches are build outputs, not committed sources.
 
 The default development version is `0.1.0-dev`. Set `VERSION=x.y.z` to stamp a build.
 A sibling consumer must install the binary with the same version as its generated SDK.
-See [homelab integration](docs/homelab.md).
+See [consumer setup](docs/consumer.md).
 
 ## Resources
 

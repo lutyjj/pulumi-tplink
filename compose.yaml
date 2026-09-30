@@ -1,0 +1,26 @@
+# Short-lived tools only. Every command runs as the invoking user.
+x-tool: &tool
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  volumes: [".:/workspace"]
+  working_dir: /workspace
+  entrypoint: [/usr/bin/env]
+  environment: &env
+    HOME: /tmp
+    GOPATH: /workspace/.cache/go
+    GOCACHE: /workspace/.cache/go-build
+    GOFLAGS: -buildvcs=false
+    PULUMI_HOME: /workspace/.cache/pulumi
+    PULUMI_SKIP_UPDATE_CHECK: "true"
+services:
+  go-tools:
+    <<: *tool
+    image: golang:1.26.8@sha256:0f063af2d465d8dcae54cce04278ada488b96f77b42449c8d071e47d016cc65a
+  node-tools:
+    <<: *tool
+    image: pulumi/pulumi-nodejs:3.262.0@sha256:c3abe63ad441d4cdad2cad0ac3a1341cc0862ca68787bb3568a5597d06401719
+  lint-tools:
+    <<: *tool
+    image: golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f
+  release-tools:
+    <<: *tool
+    image: goreleaser/goreleaser:v2.18.2@sha256:7077423cf5ef643ff56a34b58f93c1364e927e5c3dfa470eeabc44cab1a9c72b

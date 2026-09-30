@@ -3,7 +3,13 @@
 This repo owns an unofficial native Pulumi provider for TP-Link Archer routers.
 The repository stays private until the operator explicitly approves publication.
 
-- Run all build, lint, generation and test tools through the containerised Makefile.
+- Treat this project as greenfield. No deprecated paths, compatibility shims,
+  state-format adapters, or transitional implementations. Complete replacements in
+  one change, removing obsolete code, configuration, callers, tests and documentation.
+- Write for a stranger reading the public repository. Keep consumer-specific hostnames,
+  addresses, paths, inventory and deployment details out of source and documentation.
+  Use reserved example addresses and domains.
+- Run all build, lint, generation and test tools through Docker Compose and Make.
 - Keep Go code idiomatic. Prefer direct composition and standard library networking.
   Do not build a vendor-agnostic router framework or add unsupported firmware variants.
 - `internal/router` owns the wire protocol and session lifecycle. `provider` owns
