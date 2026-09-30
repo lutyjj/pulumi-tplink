@@ -13,9 +13,6 @@ Other models and firmware versions haven't been tested.
 You'll need a [Pulumi project](https://www.pulumi.com/docs/iac/get-started/),
 its language's tools, and network access to your router.
 
-> The first release hasn't been published yet. Until then, use the
-> [development build instructions](docs/development.md#try-a-development-build).
-
 Choose a version from [GitHub Releases](https://github.com/lutyjj/pulumi-tplink/releases).
 Run this in your project, replacing `0.1.0` with that version:
 
