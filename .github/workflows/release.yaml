@@ -19,6 +19,9 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    # GitHub requires push access even to read an unpublished draft release.
+    permissions:
+      contents: write
     outputs:
       sha: ${{ steps.release.outputs.sha }}
       version: ${{ steps.release.outputs.version }}
