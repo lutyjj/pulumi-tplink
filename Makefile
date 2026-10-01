@@ -86,7 +86,8 @@ release-check: release-snapshot ## Verify archives and load an installed snapsho
 		case $$(uname -m) in x86_64) arch=amd64;; aarch64) arch=arm64;; *) exit 1;; esac; \
 		pulumi plugin install resource $(PACK) "$$1" --file "dist/pulumi-resource-$(PACK)-v$$1-linux-$$arch.tar.gz"; \
 		pulumi package get-schema "$$PULUMI_HOME/plugins/resource-$(PACK)-v$$1/pulumi-resource-$(PACK)" > .cache/release-schema.json' sh "$$version"; \
-	$(COMPOSE) run --rm schema-tools -e --arg version "$$version" '.name == "$(PACK)" and .version == $$version and (.resources | length) == 6' .cache/release-schema.json
+	$(COMPOSE) run --rm schema-tools -e --arg version "$$version" --slurpfile committed $(SCHEMA_FILE) \
+		'.name == "$(PACK)" and .version == $$version and (.resources | keys) == ($$committed[0].resources | keys)' .cache/release-schema.json
 
 release: ## Attach archives to an existing release draft. Publication belongs to CI.
 	$(COMPOSE) run --rm -e GITHUB_TOKEN release-tools goreleaser release --clean
