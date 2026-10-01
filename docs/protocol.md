@@ -90,3 +90,26 @@ to first so deletion cannot shift an index still queued for removal. Unknown tab
 shapes fail closed. Both creation and update previews read and report existing
 rules without removing them. This resource does not author rules or restore them
 on destroy.
+
+Parental controls live at `admin/avira_parental_control?form=avira_pactrl`, driven by
+an `operation` field. `getOwnerTotalData` lists profiles. An empty `ownerList` arrives
+as `{}`, and `ownerId` is a string. `addOwnerInList` creates a profile when `ownerId` is
+`-1` and edits that profile otherwise. Its fields are `name`, `age`, `internetBlocked`,
+JSON arrays `allDeviceMac`, `filterCategoriesList` and `filterWebsiteList`, and a JSON
+`bedtime` object with `enable` and an `everyday` window in minutes. It answers the
+`ownerId`, a number on create and a string on edit. `delOwnerInList` takes a JSON array
+of ids in `ownerList`. Device MACs use the `AA-BB-CC-DD-EE-FF` spelling.
+
+A save records the `internetBlocked` flag but enforces only its removal. A save that
+sets the flag leaves the devices online. `internetBlock`, with `ownerId` and
+`internetBlocked`, enforces it. The `ParentalControlProfile` resource therefore saves the
+profile and then sends `internetBlock` with the declared state. Edits carry the
+router's bedtime window and filter lists back unchanged. A block cuts internet access
+for the profile's devices, IPv4 and HTTPS included. LAN traffic still flows, and the
+router answers their DNS queries with a block address. Deleting a profile lifts the
+block at once. These behaviours were verified live on the device above with a wired
+client.
+
+The deny list at `admin/access_control` (`enable`, `mode`, `black_list`, `black_devices`)
+blocks devices from the whole network rather than only the internet. The provider
+does not manage it.

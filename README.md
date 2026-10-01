@@ -78,6 +78,7 @@ accidental deletion; remove `protect` deliberately if you want to delete it.
 | `Upnp`, `Dmz`, `RemoteAdmin`, `EasyMesh`, `MediaSharing` | Turns the setting on or off | Leaves the setting alone |
 | `NatAlg` | Turns each NAT ALG and VPN passthrough on or off | Leaves the settings alone |
 | `InboundRules` | Removes all port forwards and port triggers | Leaves the tables alone; doesn't restore rules |
+| `ParentalControlProfile` | Groups devices into a parental-controls profile and can block their internet access, leaving LAN traffic alone | Deletes the profile, which lifts its block |
 
 **Only add `InboundRules` if you want every port forward and trigger removed.**
 Its preview lists the rules it would remove, including on first use.

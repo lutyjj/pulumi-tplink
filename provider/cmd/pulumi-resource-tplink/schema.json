@@ -402,6 +402,53 @@
         "ipsec"
       ]
     },
+    "tplink:index:ParentalControlProfile": {
+      "description": "A parental-controls profile that groups devices and can block their internet access while leaving LAN traffic alone.",
+      "properties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MAC addresses of the profile's devices, in any spelling. Normalised to AA-BB-CC-DD-EE-FF and sorted."
+        },
+        "internetBlocked": {
+          "type": "boolean",
+          "description": "Whether the profile's devices are cut off from the internet. Their LAN traffic is unaffected."
+        },
+        "name": {
+          "type": "string",
+          "description": "The profile name. A profile with this name that already exists is adopted on create."
+        }
+      },
+      "required": [
+        "name",
+        "devices",
+        "internetBlocked"
+      ],
+      "inputProperties": {
+        "devices": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MAC addresses of the profile's devices, in any spelling. Normalised to AA-BB-CC-DD-EE-FF and sorted."
+        },
+        "internetBlocked": {
+          "type": "boolean",
+          "description": "Whether the profile's devices are cut off from the internet. Their LAN traffic is unaffected."
+        },
+        "name": {
+          "type": "string",
+          "description": "The profile name. A profile with this name that already exists is adopted on create."
+        }
+      },
+      "requiredInputs": [
+        "name",
+        "devices",
+        "internetBlocked"
+      ]
+    },
     "tplink:index:RemoteAdmin": {
       "description": "Whether the router can be administered from the WAN side.",
       "properties": {

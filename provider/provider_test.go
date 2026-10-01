@@ -72,7 +72,8 @@ func TestPreviewNeverWritesOrLogsIn(t *testing.T) {
 		"DhcpServer":      {"primary": "192.0.2.2"},
 		"Upnp":            {"enabled": false}, "Dmz": {"enabled": false}, "RemoteAdmin": {"enabled": false},
 		"EasyMesh": {"enabled": false}, "MediaSharing": {"enabled": false},
-		"NatAlg": {"ftp": false, "tftp": false, "h323": false, "rtsp": false, "sip": false, "pptp": true, "l2tp": true, "ipsec": true},
+		"NatAlg":                 {"ftp": false, "tftp": false, "h323": false, "rtsp": false, "sip": false, "pptp": true, "l2tp": true, "ipsec": true},
+		"ParentalControlProfile": {"name": "offline", "devices": []any{"AA-BB-CC-DD-EE-01"}, "internetBlocked": true},
 	}
 	for kind, values := range cases {
 		inputs := check(t, s, kind, values)
@@ -337,4 +338,72 @@ func TestInboundPreviewObservesWithoutRemoving(t *testing.T) {
 	f.FailNext["admin/nat?form=vs/load"] = 1
 	_, err = s.Create(p.CreateRequest{Urn: urn("InboundRules"), Properties: property.Map{}, DryRun: true})
 	require.Error(t, err, "an unreadable table must not produce a clean preview")
+}
+
+func TestParentalControlProfileLifecycle(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	integration.LifeCycleTest{
+		Resource: "tplink:index:ParentalControlProfile",
+		Create: integration.Operation{
+			Inputs: props(map[string]any{"name": "offline", "devices": []any{"aa:bb:cc:dd:ee:02", "AA-BB-CC-DD-EE-01"}, "internetBlocked": true}),
+			Hook: func(_, output property.Map) {
+				profiles := f.SnapshotProfiles()
+				require.Len(t, profiles, 1)
+				assert.Equal(t, []string{"AA-BB-CC-DD-EE-01", "AA-BB-CC-DD-EE-02"}, profiles[0].Devices)
+				assert.True(t, profiles[0].Enforced, "a save alone does not enforce the block")
+				assert.Equal(t, "AA-BB-CC-DD-EE-01", output.Get("devices").AsArray().Get(0).AsString())
+			},
+		},
+		Updates: []integration.Operation{
+			{Inputs: props(map[string]any{"name": "offline", "devices": []any{"AA-BB-CC-DD-EE-01"}, "internetBlocked": false}), Hook: func(_, _ property.Map) {
+				profiles := f.SnapshotProfiles()
+				require.Len(t, profiles, 1, "edit in place, not a second profile")
+				assert.False(t, profiles[0].Enforced)
+				assert.Equal(t, []string{"AA-BB-CC-DD-EE-01"}, profiles[0].Devices)
+			}},
+			{Inputs: props(map[string]any{"name": "iot", "devices": []any{"AA-BB-CC-DD-EE-01"}, "internetBlocked": true}), Hook: func(_, _ property.Map) {
+				profiles := f.SnapshotProfiles()
+				assert.Equal(t, "iot", profiles[0].Name)
+				assert.True(t, profiles[0].Enforced)
+			}},
+		},
+	}.Run(t, s)
+	assert.Empty(t, f.SnapshotProfiles(), "delete removes the profile and its block")
+}
+
+func TestParentalControlProfileAdoptionAndDrift(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	f.Profiles = []routertest.Profile{{ID: 3, Name: "offline", Devices: []string{"AA-BB-CC-DD-EE-09"}}}
+	in := check(t, s, "ParentalControlProfile", map[string]any{"name": "offline", "devices": []any{"AA-BB-CC-DD-EE-01"}, "internetBlocked": true})
+	out, err := s.Create(p.CreateRequest{Urn: urn("ParentalControlProfile"), Properties: in})
+	require.NoError(t, err)
+	profiles := f.SnapshotProfiles()
+	require.Len(t, profiles, 1, "adopt by name, do not create a duplicate")
+	assert.Equal(t, 3, profiles[0].ID)
+	assert.True(t, profiles[0].Enforced)
+	assert.JSONEq(t, `{"enable":false,"everyday":{"bedtimeBegin":1260,"bedtimeEnd":420}}`, profiles[0].Bedtime, "keeps the router's schedule")
+	// Refresh reports devices moved outside Pulumi, and a missing profile signals deletion.
+	f.Lock()
+	f.Profiles[0].Devices = []string{"AA-BB-CC-DD-EE-07"}
+	f.Unlock()
+	read, err := s.Read(p.ReadRequest{Urn: urn("ParentalControlProfile"), ID: out.ID, Inputs: in, Properties: out.Properties})
+	require.NoError(t, err)
+	assert.Equal(t, "AA-BB-CC-DD-EE-07", read.Properties.Get("devices").AsArray().Get(0).AsString())
+	f.Lock()
+	f.Profiles = nil
+	f.Unlock()
+	read, err = s.Read(p.ReadRequest{Urn: urn("ParentalControlProfile"), ID: out.ID, Inputs: in, Properties: out.Properties})
+	require.NoError(t, err)
+	assert.Empty(t, read.ID)
+	for _, values := range []map[string]any{
+		{"name": " ", "devices": []any{"AA-BB-CC-DD-EE-01"}, "internetBlocked": true},
+		{"name": "x", "devices": []any{"not-a-mac"}, "internetBlocked": true},
+		{"name": "x", "devices": []any{"AA-BB-CC-DD-EE-01", "aa:bb:cc:dd:ee:01"}, "internetBlocked": true},
+	} {
+		res, err := s.Check(p.CheckRequest{Urn: urn("ParentalControlProfile"), Inputs: props(values)})
+		require.NoError(t, err)
+		assert.NotEmpty(t, res.Failures)
+	}
 }

@@ -30,6 +30,18 @@ type Reservation struct {
 	Enabled           bool
 }
 
+// Profile is one parental-controls profile. Saved is the internet-block flag a save
+// records; Enforced is whether the block is in effect. The firmware only enforces a
+// block through its internetBlock operation, though a save that clears the flag lifts it.
+type Profile struct {
+	ID               int
+	Name             string
+	Devices          []string
+	Saved, Enforced  bool
+	Age              string
+	Bedtime, Filters string
+}
+
 // Fake is a running fake router. Its exported fields may be read or seeded under
 // Lock while no request is in flight.
 type Fake struct {
@@ -45,6 +57,8 @@ type Fake struct {
 	Forms map[string]map[string]string
 	// Tables holds NAT tables keyed by `path?form=name`.
 	Tables map[string][]map[string]string
+	// Profiles holds the parental-controls profiles.
+	Profiles []Profile
 	// Logins counts successful logins; MaxActive is the most sessions ever open at once.
 	Logins, MaxActive int
 	// FailNext rejects matching operations before they take effect.
@@ -152,6 +166,8 @@ func (f *Fake) serve(w http.ResponseWriter, r *http.Request) {
 		f.reservations(w, op, r.PostForm)
 	case "admin/traffic?form=dev_name":
 		f.deviceName(w, r.PostForm)
+	case "admin/avira_parental_control?form=avira_pactrl":
+		f.parental(w, op, r.PostForm)
 	default:
 		f.generic(w, target, op, r.PostForm)
 	}
@@ -230,6 +246,93 @@ func (f *Fake) reservations(w http.ResponseWriter, op string, form url.Values) {
 	default:
 		reply(w, false, "unsupported_operation")
 	}
+}
+
+func (f *Fake) parental(w http.ResponseWriter, op string, form url.Values) {
+	find := func(id string) int {
+		for i, p := range f.Profiles {
+			if strconv.Itoa(p.ID) == id {
+				return i
+			}
+		}
+		return -1
+	}
+	switch op {
+	case "getOwnerTotalData":
+		if len(f.Profiles) == 0 {
+			reply(w, true, map[string]any{"ownerList": map[string]any{}})
+			return
+		}
+		owners := make([]map[string]any, len(f.Profiles))
+		for i, p := range f.Profiles {
+			clients := make([]map[string]any, len(p.Devices))
+			for j, mac := range p.Devices {
+				clients[j] = map[string]any{"mac": mac, "online": false, "name": "", "clientType": "other"}
+			}
+			owners[i] = map[string]any{
+				"ownerId": strconv.Itoa(p.ID), "name": p.Name, "age": 0, "internetBlocked": p.Saved,
+				"clientList": clients, "filterCategoriesList": map[string]any{}, "filterWebsiteList": map[string]any{},
+				"bedtime": map[string]any{"enable": false, "mode": "everyday", "everyday": map[string]any{"bedtimeBegin": 1260, "bedtimeEnd": 420}},
+			}
+		}
+		reply(w, true, map[string]any{"ownerList": owners})
+	case "addOwnerInList":
+		var devices []string
+		if err := json.Unmarshal([]byte(form.Get("allDeviceMac")), &devices); err != nil {
+			reply(w, false, "bad_devices")
+			return
+		}
+		saved := form.Get("internetBlocked") == "true"
+		next := Profile{Name: form.Get("name"), Devices: devices, Saved: saved, Age: form.Get("age"),
+			Bedtime: form.Get("bedtime"), Filters: form.Get("filterCategoriesList") + form.Get("filterWebsiteList")}
+		if id := form.Get("ownerId"); id != "-1" {
+			i := find(id)
+			if i < 0 {
+				reply(w, false, "owner_not_found")
+				return
+			}
+			next.ID, next.Enforced = f.Profiles[i].ID, f.Profiles[i].Enforced && saved
+			f.Profiles[i] = next
+			reply(w, true, map[string]any{"ownerId": id})
+			return
+		}
+		next.ID = 0
+		for _, p := range f.Profiles {
+			next.ID = max(next.ID, p.ID+1)
+		}
+		f.Profiles = append(f.Profiles, next)
+		reply(w, true, map[string]any{"ownerId": next.ID})
+	case "internetBlock":
+		i := find(form.Get("ownerId"))
+		if i < 0 {
+			reply(w, false, "owner_not_found")
+			return
+		}
+		blocked := form.Get("internetBlocked") == "true"
+		f.Profiles[i].Saved, f.Profiles[i].Enforced = blocked, blocked
+		reply(w, true, map[string]any{})
+	case "delOwnerInList":
+		var ids []string
+		if err := json.Unmarshal([]byte(form.Get("ownerList")), &ids); err != nil {
+			reply(w, false, "bad_owner_list")
+			return
+		}
+		for _, id := range ids {
+			if i := find(id); i >= 0 {
+				f.Profiles = append(f.Profiles[:i], f.Profiles[i+1:]...)
+			}
+		}
+		reply(w, true, map[string]any{})
+	default:
+		reply(w, false, "unsupported_operation")
+	}
+}
+
+// SnapshotProfiles returns a copy of the parental-controls profiles.
+func (f *Fake) SnapshotProfiles() []Profile {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]Profile(nil), f.Profiles...)
 }
 
 func (f *Fake) deviceName(w http.ResponseWriter, form url.Values) {
