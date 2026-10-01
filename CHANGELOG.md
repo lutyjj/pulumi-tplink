@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/lutyjj/pulumi-tplink/compare/v0.2.0...v0.2.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* **release:** check released resources against the committed schema ([506e932](https://github.com/lutyjj/pulumi-tplink/commit/506e93229ac3467df8213f2ffdcf5952321f680b))
+
 ## [0.2.0](https://github.com/lutyjj/pulumi-tplink/compare/v0.1.0...v0.2.0) (2026-10-01)
 
 
