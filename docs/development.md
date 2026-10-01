@@ -104,5 +104,4 @@ With the default `GITHUB_TOKEN`, CI does not start automatically on bot-created
 release PRs; an optional `RELEASE_PLEASE_TOKEN` can enable that behavior. Publication
 always runs its own validation after the merge.
 
-No language packages or router changes are deployed by this process. Repository
-visibility remains a separate decision.
+No language packages or router changes are deployed by this process.

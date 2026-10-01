@@ -26,7 +26,7 @@ Pulumi downloads the provider and generates the SDK for your project's language.
 TypeScript, JavaScript, Python, Go, C# and Java are supported; Pulumi YAML uses the
 provider directly. You don't need to build the provider or install a separate
 package from a language registry. Releases include Linux, macOS and Windows binaries
-for amd64 and arm64. Private releases need an authorized `GITHUB_TOKEN`.
+for amd64 and arm64.
 
 ## Connect your router
 
