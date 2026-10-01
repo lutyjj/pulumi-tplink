@@ -73,7 +73,9 @@ matching the web UI's writes. The EasyMesh record also reports `time`, which the
 UI never writes back. `admin/nat?form=alg` holds eight `on`/`off` fields: `ftp`,
 `tftp`, `h323`, `rtsp`, `sip`, `pptp`, `l2tp` and `ipsec`. The UI writes all eight
 together, and the resource declares every one. Reads fail closed on a missing field
-or any other value. These write shapes come from the web UI, not from a live write test.
+or any other value. These write shapes come from the web UI and were applied live on
+the verified device: each record read back as written, and EasyMesh kept its unsent
+`time` field.
 
 The UI selects controls from the capability record at `device_config?form=config`.
 On the verified device it reports `mainNetwork.ofdmaMumimo`, so the UI shows the
