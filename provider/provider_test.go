@@ -71,6 +71,8 @@ func TestPreviewNeverWritesOrLogsIn(t *testing.T) {
 		"DhcpReservation": {"mac": "AA-BB-CC-DD-EE-01", "ip": "192.0.2.11"},
 		"DhcpServer":      {"primary": "192.0.2.2"},
 		"Upnp":            {"enabled": false}, "Dmz": {"enabled": false}, "RemoteAdmin": {"enabled": false},
+		"EasyMesh": {"enabled": false}, "MediaSharing": {"enabled": false},
+		"NatAlg": {"ftp": false, "tftp": false, "h323": false, "rtsp": false, "sip": false, "pptp": true, "l2tp": true, "ipsec": true},
 	}
 	for kind, values := range cases {
 		inputs := check(t, s, kind, values)
@@ -165,14 +167,56 @@ func TestDhcpServerPreservesUnmanagedFields(t *testing.T) {
 }
 
 func TestToggleLifecycles(t *testing.T) {
-	for kind, target := range map[string]string{"Upnp": "admin/upnp?form=enable", "Dmz": "admin/nat?form=dmz", "RemoteAdmin": "admin/administration?form=remote"} {
+	for kind, field := range map[string][2]string{
+		"Upnp":         {"admin/upnp?form=enable", "enable"},
+		"Dmz":          {"admin/nat?form=dmz", "enable"},
+		"RemoteAdmin":  {"admin/administration?form=remote", "enable"},
+		"EasyMesh":     {"admin/easymesh?form=easymesh_enable", "enable"},
+		"MediaSharing": {"admin/folder_sharing?form=media", "media_sharing"},
+	} {
 		t.Run(kind, func(t *testing.T) {
 			t.Parallel()
 			s, f := server(t)
-			integration.LifeCycleTest{Resource: "tplink:index:" + tokens.Type(kind), Create: integration.Operation{Inputs: props(map[string]any{"enabled": false})}, Updates: []integration.Operation{{Inputs: props(map[string]any{"enabled": true})}}}.Run(t, s)
-			assert.Equal(t, "on", f.Forms[target]["enable"], "delete leaves the setting")
+			target, name := field[0], field[1]
+			integration.LifeCycleTest{
+				Resource: "tplink:index:" + tokens.Type(kind),
+				Create: integration.Operation{Inputs: props(map[string]any{"enabled": false}), Hook: func(_, _ property.Map) {
+					assert.Equal(t, "off", f.Forms[target][name])
+				}},
+				Updates: []integration.Operation{{Inputs: props(map[string]any{"enabled": true})}},
+			}.Run(t, s)
+			assert.Equal(t, "on", f.Forms[target][name], "delete leaves the setting")
 		})
 	}
+}
+
+func TestNatAlgLifecycle(t *testing.T) {
+	t.Parallel()
+	s, f := server(t)
+	const target = "admin/nat?form=alg"
+	vpnOnly := map[string]any{"ftp": false, "tftp": false, "h323": false, "rtsp": false, "sip": false, "pptp": true, "l2tp": true, "ipsec": true}
+	withSip := map[string]any{"ftp": false, "tftp": false, "h323": false, "rtsp": false, "sip": true, "pptp": true, "l2tp": true, "ipsec": true}
+	integration.LifeCycleTest{
+		Resource: "tplink:index:NatAlg",
+		Create: integration.Operation{Inputs: props(vpnOnly), Hook: func(_, _ property.Map) {
+			assert.Equal(t, map[string]string{
+				"ftp": "off", "tftp": "off", "h323": "off", "rtsp": "off",
+				"sip": "off", "pptp": "on", "l2tp": "on", "ipsec": "on",
+			}, f.Forms[target])
+		}},
+		Updates: []integration.Operation{{Inputs: props(withSip)}},
+	}.Run(t, s)
+	assert.Equal(t, "on", f.Forms[target]["sip"], "delete leaves the gateways")
+
+	// Refresh reports a gateway switched outside Pulumi.
+	in := check(t, s, "NatAlg", vpnOnly)
+	out, err := s.Create(p.CreateRequest{Urn: urn("NatAlg"), Properties: in})
+	require.NoError(t, err)
+	f.Forms[target]["ftp"] = "on"
+	read, err := s.Read(p.ReadRequest{Urn: urn("NatAlg"), ID: out.ID, Inputs: in, Properties: out.Properties})
+	require.NoError(t, err)
+	assert.True(t, read.Inputs.Get("ftp").AsBool())
+	assert.True(t, read.Inputs.Get("ipsec").AsBool())
 }
 
 func TestInboundRulesDetectsLiveDriftWithoutRefresh(t *testing.T) {

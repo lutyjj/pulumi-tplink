@@ -126,6 +126,44 @@ func TestAssertFormPreservesOtherFields(t *testing.T) {
 	assert.Equal(t, map[string]string{"enable": "on", "ipaddr": "0.0.0.0"}, fake.Forms["admin/nat?form=dmz"])
 }
 
+func TestToggleWrittenAloneSendsOnlyItsField(t *testing.T) {
+	t.Parallel()
+	c, fake := newClient(t, routertest.Password)
+	ctx := t.Context()
+	require.NoError(t, c.Do(ctx, func(s *router.Session) error {
+		return s.SetToggle(ctx, router.EasyMesh, false)
+	}))
+	fake.Lock()
+	defer fake.Unlock()
+	// The web UI writes EasyMesh as `{enable}` alone and never echoes `time` back.
+	assert.Equal(t, map[string]string{"enable": "off"}, fake.Forms["admin/easymesh?form=easymesh_enable"])
+}
+
+func TestALGRoundTripAndFailsClosed(t *testing.T) {
+	t.Parallel()
+	c, fake := newClient(t, routertest.Password)
+	ctx := t.Context()
+	want := router.ALG{PPTP: true, L2TP: true, IPsec: true}
+	require.NoError(t, c.Do(ctx, func(s *router.Session) error {
+		require.NoError(t, s.SetALG(ctx, want))
+		got, err := s.ReadALG(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+		return nil
+	}))
+	fake.Lock()
+	assert.Equal(t, map[string]string{
+		"ftp": "off", "tftp": "off", "h323": "off", "rtsp": "off",
+		"sip": "off", "pptp": "on", "l2tp": "on", "ipsec": "on",
+	}, fake.Forms["admin/nat?form=alg"])
+	fake.Forms["admin/nat?form=alg"]["sip"] = "auto"
+	fake.Unlock()
+	require.ErrorContains(t, c.Do(ctx, func(s *router.Session) error {
+		_, err := s.ReadALG(ctx)
+		return err
+	}), `"sip"`)
+}
+
 func TestClearIngressRulesWalksBackwards(t *testing.T) {
 	t.Parallel()
 	c, fake := newClient(t, routertest.Password)

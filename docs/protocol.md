@@ -66,6 +66,22 @@ Settings writes replace the entire record. DHCP and toggle resources read, merge
 managed fields, and write the complete record back. Removing a settings resource
 stops management without blanking or restoring values.
 
+Toggles hold one `on`/`off` field. UPnP, DMZ and remote administration merge it into
+the full record. EasyMesh (`admin/easymesh?form=easymesh_enable`) and media sharing
+(`admin/folder_sharing?form=media`, field `media_sharing`) send that field alone,
+matching the web UI's writes. The EasyMesh record also reports `time`, which the
+UI never writes back. `admin/nat?form=alg` holds eight `on`/`off` fields: `ftp`,
+`tftp`, `h323`, `rtsp`, `sip`, `pptp`, `l2tp` and `ipsec`. The UI writes all eight
+together, and the resource declares every one. Reads fail closed on a missing field
+or any other value. These write shapes come from the web UI, not from a live write test.
+
+The UI selects controls from the capability record at `device_config?form=config`.
+On the verified device it reports `mainNetwork.ofdmaMumimo`, so the UI shows the
+combined `admin/wireless?form=ofdma_mimo` selector, not the `form=ofdma` switch.
+It reports `mainNetwork.ffs` as false, so the UI hides Amazon Wi-Fi Simple Setup
+(`admin/ffs?form=config`) although that record still reads. The provider manages
+neither.
+
 NAT port forwarding (`admin/nat?form=vs`) and port triggering (`form=pt`) are positional
 tables. The `InboundRules` resource asserts both are empty and removes rows from last
 to first so deletion cannot shift an index still queued for removal. Unknown table

@@ -250,6 +250,25 @@
         "enabled"
       ]
     },
+    "tplink:index:EasyMesh": {
+      "description": "Whether EasyMesh is enabled. EasyMesh lets satellite routers and extenders join the router's network.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "inputProperties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "enabled"
+      ]
+    },
     "tplink:index:InboundRules": {
       "description": "Asserts that the router holds no port forwards and no port triggers, removing any it finds.",
       "properties": {
@@ -271,6 +290,116 @@
       "required": [
         "removed",
         "rules"
+      ]
+    },
+    "tplink:index:MediaSharing": {
+      "description": "Whether the router shares attached USB storage as a DLNA media server on the LAN.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "inputProperties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": [
+        "enabled"
+      ]
+    },
+    "tplink:index:NatAlg": {
+      "description": "The NAT application-layer gateways (ALGs). Every gateway is declared, as the web UI writes them together.",
+      "properties": {
+        "ftp": {
+          "type": "boolean",
+          "description": "Whether the FTP ALG rewrites FTP data connections."
+        },
+        "h323": {
+          "type": "boolean",
+          "description": "Whether the H.323 ALG rewrites H.323 call signalling."
+        },
+        "ipsec": {
+          "type": "boolean",
+          "description": "Whether IPsec VPN connections pass through NAT."
+        },
+        "l2tp": {
+          "type": "boolean",
+          "description": "Whether L2TP VPN connections pass through NAT."
+        },
+        "pptp": {
+          "type": "boolean",
+          "description": "Whether PPTP VPN connections pass through NAT."
+        },
+        "rtsp": {
+          "type": "boolean",
+          "description": "Whether the RTSP ALG rewrites RTSP streaming sessions."
+        },
+        "sip": {
+          "type": "boolean",
+          "description": "Whether the SIP ALG rewrites SIP call signalling."
+        },
+        "tftp": {
+          "type": "boolean",
+          "description": "Whether the TFTP ALG tracks TFTP transfers."
+        }
+      },
+      "required": [
+        "ftp",
+        "tftp",
+        "h323",
+        "rtsp",
+        "sip",
+        "pptp",
+        "l2tp",
+        "ipsec"
+      ],
+      "inputProperties": {
+        "ftp": {
+          "type": "boolean",
+          "description": "Whether the FTP ALG rewrites FTP data connections."
+        },
+        "h323": {
+          "type": "boolean",
+          "description": "Whether the H.323 ALG rewrites H.323 call signalling."
+        },
+        "ipsec": {
+          "type": "boolean",
+          "description": "Whether IPsec VPN connections pass through NAT."
+        },
+        "l2tp": {
+          "type": "boolean",
+          "description": "Whether L2TP VPN connections pass through NAT."
+        },
+        "pptp": {
+          "type": "boolean",
+          "description": "Whether PPTP VPN connections pass through NAT."
+        },
+        "rtsp": {
+          "type": "boolean",
+          "description": "Whether the RTSP ALG rewrites RTSP streaming sessions."
+        },
+        "sip": {
+          "type": "boolean",
+          "description": "Whether the SIP ALG rewrites SIP call signalling."
+        },
+        "tftp": {
+          "type": "boolean",
+          "description": "Whether the TFTP ALG tracks TFTP transfers."
+        }
+      },
+      "requiredInputs": [
+        "ftp",
+        "tftp",
+        "h323",
+        "rtsp",
+        "sip",
+        "pptp",
+        "l2tp",
+        "ipsec"
       ]
     },
     "tplink:index:RemoteAdmin": {

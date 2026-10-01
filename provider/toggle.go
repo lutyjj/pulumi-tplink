@@ -103,3 +103,19 @@ type RemoteAdmin struct{ toggle }
 func (r *RemoteAdmin) Annotate(a infer.Annotator) {
 	a.Describe(&r, "Whether the router can be administered from the WAN side.")
 }
+
+// EasyMesh asserts whether EasyMesh is enabled.
+type EasyMesh struct{ toggle }
+
+// Annotate describes the resource.
+func (r *EasyMesh) Annotate(a infer.Annotator) {
+	a.Describe(&r, "Whether EasyMesh is enabled. EasyMesh lets satellite routers and extenders join the router's network.")
+}
+
+// MediaSharing asserts whether the router serves USB storage as a DLNA media server.
+type MediaSharing struct{ toggle }
+
+// Annotate describes the resource.
+func (r *MediaSharing) Annotate(a infer.Annotator) {
+	a.Describe(&r, "Whether the router shares attached USB storage as a DLNA media server on the LAN.")
+}

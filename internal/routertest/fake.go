@@ -69,9 +69,15 @@ func New(t testing.TB) *Fake {
 				"enable": "on", "leasetime": "120", "pri_dns": "192.0.2.1", "snd_dns": "",
 				"gateway": "192.0.2.1", "ipaddr_start": "192.0.2.100", "ipaddr_end": "192.0.2.199", "domain": "lan",
 			},
-			"admin/upnp?form=enable":           {"enable": "on"},
-			"admin/nat?form=dmz":               {"enable": "off", "ipaddr": "0.0.0.0"},
-			"admin/administration?form=remote": {"enable": "off", "port": "443"},
+			"admin/upnp?form=enable":              {"enable": "on"},
+			"admin/nat?form=dmz":                  {"enable": "off", "ipaddr": "0.0.0.0"},
+			"admin/administration?form=remote":    {"enable": "off", "port": "443"},
+			"admin/easymesh?form=easymesh_enable": {"enable": "on", "time": "65"},
+			"admin/folder_sharing?form=media":     {"media_sharing": "on"},
+			"admin/nat?form=alg": {
+				"ftp": "on", "tftp": "on", "h323": "on", "rtsp": "on",
+				"sip": "on", "pptp": "on", "l2tp": "on", "ipsec": "on",
+			},
 		},
 		Tables: map[string][]map[string]string{
 			"admin/nat?form=vs": {},

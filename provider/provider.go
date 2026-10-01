@@ -42,6 +42,8 @@ func Provider() p.Provider {
 			infer.Resource(DhcpReservation{}), infer.Resource(DhcpServer{}),
 			infer.Resource(InboundRules{}), infer.Resource(Upnp{toggle{router.UPnP}}),
 			infer.Resource(Dmz{toggle{router.DMZ}}), infer.Resource(RemoteAdmin{toggle{router.RemoteAdmin}}),
+			infer.Resource(EasyMesh{toggle{router.EasyMesh}}), infer.Resource(MediaSharing{toggle{router.MediaSharing}}),
+			infer.Resource(NatAlg{}),
 		).
 		WithModuleMap(map[tokens.ModuleName]tokens.ModuleName{"provider": "index"}).Build()
 	if err != nil {

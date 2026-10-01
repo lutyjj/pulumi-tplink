@@ -1,8 +1,8 @@
 # pulumi-tplink
 
 Manage your TP-Link Archer router with [Pulumi](https://www.pulumi.com/).
-Reserve IP addresses, set DHCP and DNS options, and control UPnP, DMZ and remote
-administration from your Pulumi project. The provider talks directly to your router.
+Reserve IP addresses, set DHCP and DNS options, and control UPnP, DMZ, remote
+administration, EasyMesh, media sharing and NAT ALGs from your Pulumi project. The provider talks directly to your router.
 You don't need a TP-Link cloud account or SSH access.
 
 This is an unofficial project. API reads are verified on **Archer AXE75 v1.0**
@@ -75,7 +75,8 @@ accidental deletion; remove `protect` deliberately if you want to delete it.
 | --- | --- | --- |
 | `DhcpReservation` | Reserves an IP for a MAC address | Deletes the reservation, but keeps the device name |
 | `DhcpServer` | Sets DHCP DNS servers and pool bounds | Leaves the settings alone |
-| `Upnp`, `Dmz`, `RemoteAdmin` | Turns the setting on or off | Leaves the setting alone |
+| `Upnp`, `Dmz`, `RemoteAdmin`, `EasyMesh`, `MediaSharing` | Turns the setting on or off | Leaves the setting alone |
+| `NatAlg` | Turns each NAT ALG and VPN passthrough on or off | Leaves the settings alone |
 | `InboundRules` | Removes all port forwards and port triggers | Leaves the tables alone; doesn't restore rules |
 
 **Only add `InboundRules` if you want every port forward and trigger removed.**
